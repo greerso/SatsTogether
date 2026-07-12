@@ -67,6 +67,18 @@ This is **intended** as a prize-linked savings tool, not a lottery or gambling p
 2. Follow `docs/testnet-guide.md`.
 3. Mainnet deployment (with a 10 BTC TVL cap as a design goal) is **not implemented** — see `scripts/deploy-mainnet.sh`, which refuses to run.
 
+## Hybrid Claude + Grok development
+Claude Code plans/reviews; Grok Build implements. Hermes can orchestrate both.
+
+```bash
+./scripts/hybrid-pipeline.sh status
+./scripts/hybrid-pipeline.sh plan "your goal"
+./scripts/hybrid-pipeline.sh implement
+./scripts/hybrid-pipeline.sh review
+```
+
+See `docs/hybrid-workflow.md` and `CLAUDE.md`.
+
 ## License
 MIT — Fork freely. See `docs/fork-policy.md`.
 

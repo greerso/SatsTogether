@@ -30,3 +30,4 @@ testnet-data/
 
 # Tool state
 .remember/
+.hybrid/
