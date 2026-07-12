@@ -21,11 +21,10 @@ describe('BitVMVerifier (mock)', () => {
     assert.ok(a.onChainProof?.startsWith('mock-proof:'));
   });
 
-  it('different sources can produce different yields', async () => {
+  it('proof strings include the source name', async () => {
     const v = new BitVMVerifier();
     const a = await v.generateProof('DLC');
     const b = await v.generateProof('Ark');
-    // Not required they differ, but proof strings must include source
     assert.ok(a.onChainProof?.includes('DLC'));
     assert.ok(b.onChainProof?.includes('Ark'));
   });
@@ -62,36 +61,28 @@ describe('YieldRotatorV0_6 (prototype)', () => {
     }
   });
 
-  it('buffer path zeros buffer when all sources invalid (simulated via empty buffer after)', async () => {
-    // With current mock, sources always valid — exercise buffer field mutation contract
-    // by checking getYieldHealth shape.
+  it('getYieldHealth reports three sources with boolean validity', async () => {
     const rot = new YieldRotatorV0_6();
     const health = await rot.getYieldHealth();
     assert.equal(typeof health.overallHealthy, 'boolean');
     assert.equal(health.sources.length, 3);
-    assert.ok(typeof health.timestamp === 'number');
+    assert.equal(typeof health.timestamp, 'number');
     for (const s of health.sources) {
       assert.ok(['DLC', 'Ark', 'BitVMWrapper'].includes(s.source));
       assert.equal(typeof s.valid, 'boolean');
     }
   });
 
-  it('liquidity buffer is drawn down when used (unit of buffer accounting)', async () => {
-    // Mock sources are always valid, so buffer path is not taken in rotateAndRoute.
-    // Document expected buffer semantics if we force empty valid set via a subclass.
-    class FailRotator extends YieldRotatorV0_6 {
-      // @ts-expect-error test double
-      private sources = [] as const;
-      // Override isolation path by monkey-patching check via empty sources on prototype pattern
-    }
-    // Direct buffer contract: call rotate with a rotator whose checkAllSources returns []
-    const rot = new YieldRotatorV0_6() as YieldRotatorV0_6 & {
-      checkAllSources?: () => Promise<unknown[]>;
-    };
-    // Access private via casting for test
+  it('liquidity buffer is drawn down to zero when all sources invalid', async () => {
+    const rot = new YieldRotatorV0_6();
+    // Force buffer path: private checkAllSources is only reachable via cast in tests.
     const anyRot = rot as unknown as {
-      checkAllSources: () => Promise<Array<{ source: string; valid: boolean; yieldAmount: number; proof: string | null }>>;
-      rotateAndRoute: (s: { liquidityBuffer?: number }) => Promise<{ yieldAmount: number; source: string }>;
+      checkAllSources: () => Promise<
+        Array<{ source: string; valid: boolean; yieldAmount: number; proof: string | null }>
+      >;
+      rotateAndRoute: (s: {
+        liquidityBuffer?: number;
+      }) => Promise<{ yieldAmount: number; source: string }>;
     };
     anyRot.checkAllSources = async () => [];
     const state = { liquidityBuffer: 500 };
@@ -99,7 +90,6 @@ describe('YieldRotatorV0_6 (prototype)', () => {
     assert.equal(result.source, 'buffer');
     assert.equal(result.yieldAmount, 500);
     assert.equal(state.liquidityBuffer, 0);
-    // second call: buffer empty
     const result2 = await anyRot.rotateAndRoute(state);
     assert.equal(result2.yieldAmount, 0);
   });

@@ -57,7 +57,7 @@ npm test   # from repo root
 
 ## Production path
 
-See `docs/production-roadmap.md`. We are completing **Phase 0** (honest foundation + unit tests). Production/mainnet is P4+ only after spec, testnet slice, and audit gates.
+See `docs/production-roadmap.md`. **Phase 0 complete** (unit tests + smoke). Next is Phase 1 (spec/sim interfaces). Production/mainnet is P4+ only after testnet slice and audit gates.
 
 ## Related docs
 
