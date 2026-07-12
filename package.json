@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
-    "test:ts": "node --experimental-strip-types --test tests/**/*.test.ts"
+    "test:ts": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "testnet:draw": "node --experimental-strip-types scripts/testnet-draw.ts",
+    "testnet:check": "bash scripts/testnet-check.sh"
   }
 }

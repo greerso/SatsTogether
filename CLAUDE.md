@@ -14,9 +14,10 @@ Early **prototype / design reference** for a Bitcoin L1-native no-loss prize sav
 schema/           Taproot Assets schema
 bitvm/            BitVM2 verifier + draw logic (TS + Rust sketch)
 sim/              Phase 1 off-chain draw + share ledger simulator
+testnet/          Phase 2 testnet/signet block-hash → draw wiring
 yield-adapters/   DLC / Ark / BitVM wrappers + rotator
 frontend/         React Native UI mock
-scripts/          deploy, multisig, smoke, hybrid pipeline
+scripts/          deploy, multisig, smoke, hybrid pipeline, testnet-draw
 governance/       quadratic voting + Signer interface
 tests/            Node TS unit/property tests
 docs/             legal, audit checklist, testnet, hybrid workflow, protocol-spec
@@ -59,7 +60,7 @@ npm test   # from repo root
 
 ## Production path
 
-See `docs/production-roadmap.md`. **Phase 0–1 complete**. **Phase 2 current**: one testnet vertical slice (recommended: block-hash → draw inputs). Production/mainnet is P4+ only after testnet slice and audit gates.
+See `docs/production-roadmap.md`. **Phase 0–1 complete**. **Phase 2 slice:** testnet/signet block hashes → offline draw (`npm run testnet:draw`). Production/mainnet is P4+ only after audit gates.
 
 ## Related docs
 
