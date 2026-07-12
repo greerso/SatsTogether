@@ -90,7 +90,7 @@ MIT — Fork freely. See `docs/fork-policy.md`.
 - Frontend is a UI mockup, not a functional client.
 - **Phase 0–1 complete**; **Phase 2 slice:** real testnet block hashes → offline draw (`npm run testnet:draw`, web at Coolify). Still **not** mainnet-ready.
 - **Production path:** `docs/production-roadmap.md` (P0 → P1 → **P2** → P3 audit → P4 capped mainnet → P5 scale).
-- **Hosted prototype:** https://satstogether.greerso.com (status + testnet draw API only). See `docs/coolify.md`.
+- **Hosted prototype:** https://satstogether.greerso.com — interactive sim ledger + testnet draw. See `docs/coolify.md`.
 - Mainnet deployment and the TVL cap are unimplemented design goals; audits have not happened and are not scheduled.
 
 Built with ❤️ for Bitcoin. No VCs. No premine. Pure decentralization.
