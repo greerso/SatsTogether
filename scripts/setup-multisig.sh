@@ -9,8 +9,11 @@ fi
 
 echo "SatsTogether Public Multisig Setup (3-of-5, community-elected)"
 
-# In production, signers are elected via quadratic voting on Bitcoin messages
-bitcoin-cli createmultisig 3 "[\"$1\", \"$2\", \"$3\", \"$4\", \"$5\"]" > docs/public-multisig.json
+# In production, signers are elected via quadratic voting on Bitcoin messages.
+# Capture first so a bitcoin-cli failure (set -e) aborts before we truncate the
+# output file — otherwise a bad key would leave an empty public-multisig.json.
+multisig=$(bitcoin-cli createmultisig 3 "[\"$1\", \"$2\", \"$3\", \"$4\", \"$5\"]")
+echo "$multisig" > docs/public-multisig.json
 
 echo "Multisig address and redeem script saved to docs/public-multisig.json"
 echo "This address receives optional yield contributions. Fully transparent."
