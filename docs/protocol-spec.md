@@ -1,7 +1,8 @@
 # SatsTogether Protocol Spec (Phase 1)
 
-**Status:** Implementation-oriented draft for offline sim + interfaces.  
-**Not audited. Not mainnet. Spec is authoritative for `sim/` and pure logic only.**  
+**Status:** Phase 1 implementation-oriented protocol for offline sim + interfaces.  
+**Human-reviewed** 2026-07-12 for internal consistency (after Opus critical-assessment + follow-ups).  
+**Not audited. Not mainnet.** Spec is authoritative for `sim/` and pure logic only.  
 On-chain vaults, BitVM2 circuits, and Lightning settlement are **design targets** called out explicitly as unimplemented.
 
 Related: `docs/threat-model.md`, `docs/production-roadmap.md`, `sim/`, `bitvm/draw_verifier.rs`.
@@ -313,5 +314,6 @@ Must hold in any real implementation and are checked in sim tests where applicab
 | 0.1.0-draft | 2026-07-12 | Outline |
 | 0.2.0-draft | 2026-07-12 | Implementation-ready: lifecycle, interfaces, sim map, invariants |
 | 0.2.1-draft | 2026-07-12 | Opus critical-assessment fixes: QV weight honesty, first-valid, burn concentration, error catalog |
+| 0.3.0 | 2026-07-12 | Human-reviewed for Phase 1 internal consistency (Danny); still prototype, not mainnet |
 
-Human review still required for Phase 1 exit criterion “spec reviewed (human) for internal consistency.”
+Phase 1 exit criterion “spec reviewed (human) for internal consistency” is **met** as of 2026-07-12. Remaining gaps are open questions / later-phase design, not unreviewed contradiction.
