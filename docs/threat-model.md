@@ -27,6 +27,7 @@
 2. **MEV / miner** — biases block-based randomness without commit-reveal.  
 3. **Malicious prover** — false yield proofs.  
 4. **Sybil voter** — many keys vs quadratic voting.  
+4b. **Weight forger** — single key asserts unbounded QV weight (mock signs asserted weight; tally does not recompute sqrt(votes)).  
 5. **Malicious client** — lies about local state.  
 6. **Insider / “operator”** — any residual privileged key.  
 7. **Legal / regulatory** — product treated as gambling; freeze risk.
@@ -39,6 +40,7 @@
 | Biased draw | High if seeds known early | Commit-reveal + multi-block entropy |
 | Principal theft | N/A (no vault) | Covenant/BitVM principal vaults; no admin key |
 | QV sybil | Acknowledged; not mitigated | Identity/cost voting or drop QV claims |
+| QV weight forgery | Trivial under MockSigner (assert any weight) | Bind votes; recompute weight in tally; real sigs |
 | UI overclaim | Mitigated by docs honesty | Keep banners; no mainnet default |
 | Supply-chain | Standard npm/cargo | Lockfiles, review upgrades |
 
@@ -47,6 +49,7 @@
 - No claim of principal protection in software today.  
 - No claim of MEV-resistant draws today.  
 - No claim of sybil-resistant quadratic voting today.  
+- No claim that mock QV weights are integrity-checked (weight is caller-asserted).  
 - No claim of production BitVM2 security for current modules.
 
 ## Residual risk acceptance

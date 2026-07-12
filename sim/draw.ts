@@ -73,7 +73,11 @@ export function selectWinners(
   // u64::MAX - (u64::MAX % total_shares) in Rust
   const limit = U64_MAX - (U64_MAX % totalShares);
 
-  const maxAttempts = Math.max(10_000, Number(target) * 100);
+  // Match Rust: 10_000u32.max((target as u32).saturating_mul(100))
+  const U32_MAX = 0xffff_ffff;
+  const targetU32 = target > BigInt(U32_MAX) ? U32_MAX : Number(target);
+  const mul = Math.min(U32_MAX, targetU32 * 100);
+  const maxAttempts = Math.max(10_000, mul);
   let counter = 0;
   let attempts = 0;
 

@@ -3,16 +3,17 @@
 ## Project
 - Path: `~/dev/Bitcoin/SatsTogether`
 - Remote: `https://github.com/greerso/SatsTogether.git`
-- `main` includes Phase 1 (`#3`)
 
 ## Done
-- Phase 0 + Phase 1 sim/interfaces on main
-- Review follow-ups: prize wording (`allocated`), golden vectors Rust↔TS, partial-burn test, input validation
+- Phase 0 + Phase 1 sim on main
+- Opus critical-assessment of `docs/protocol-spec.md` → `.hybrid/protocol-spec-critical-assessment.md`
+- Follow-up branch: fix QV honesty, first-valid, burn concentration, error catalog, attempt-budget parity
 
 ## Next
-1. Human-review `docs/protocol-spec.md` (last P1 exit criterion)
-2. Phase 2: testnet block-hash → draw inputs vertical slice
+1. Human accept remaining P1 “spec reviewed” (after this PR lands)
+2. Phase 2: testnet block-hash → draw inputs
 
 ## Workflow
 - Always: commit → PR → code-review → fix → squash-merge
 - Local gate: `export PATH="$HOME/.cargo/bin:$PATH" && ./scripts/smoke-test.sh`
+- End of turn: always suggest next step

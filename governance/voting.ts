@@ -1,12 +1,12 @@
 // SatsTogether Quadratic Voting for Yield Sources (Bitcoin-signed, no central authority)
 //
-// NOT SYBIL-RESISTANT: client-side Math.sqrt(votes) weighting only limits
-// how much *one key* can dominate. It does nothing to stop someone from
-// splitting the same sats across N keys and casting N votes instead of
-// one — N small votes beat one big vote under quadratic weighting. Real
-// quadratic voting requires per-identity or paid-cost weighting enforced
-// on the consensus/server side, which this prototype does not implement.
-// This file intentionally does not fake that guarantee.
+// NOT SYBIL-RESISTANT and NOT WEIGHT-INTEGRITY:
+// - Multi-key: Math.sqrt(votes) only limits how much *one key* can dominate if
+//   the client is honest. Splitting sats across N keys yields N votes.
+// - Single-key: castVote signs asserted `weight`, not `votes`. tallyVotes never
+//   recomputes sqrt(votes); a signer can put any finite weight in the message.
+// Real QV needs identity/cost weighting + weight derivation on the consensus side.
+// This file intentionally does not fake those guarantees.
 import { defaultMockSigner, type Signer } from './crypto.ts';
 
 export const VERSION = '0.1.0-prototype';
@@ -53,10 +53,10 @@ export function tallyVotes(
   const tally: Record<string, number> = {};
 
   for (const v of votes) {
-    if (seenPubkeys.has(v.pubkey)) continue; // dedupe: one vote per pubkey
+    if (seenPubkeys.has(v.pubkey)) continue; // one valid vote per pubkey
     if (!signer.verifyMessage(`Vote:${v.source}:${v.weight}`, v.signature, v.pubkey)) continue;
-    seenPubkeys.add(v.pubkey);
-    tally[v.source] = (tally[v.source] || 0) + v.weight;
+    seenPubkeys.add(v.pubkey); // only after valid verify — first *valid* wins
+    tally[v.source] = (tally[v.source] || 0) + v.weight; // weight is caller-asserted
   }
 
   const sources = Object.keys(tally);
