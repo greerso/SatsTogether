@@ -7,6 +7,8 @@
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "test:ts": "node --experimental-strip-types --test tests/**/*.test.ts",
     "testnet:draw": "node --experimental-strip-types scripts/testnet-draw.ts",
-    "testnet:check": "bash scripts/testnet-check.sh"
+    "testnet:check": "bash scripts/testnet-check.sh",
+    "start": "node --experimental-strip-types web/server.ts",
+    "web": "node --experimental-strip-types web/server.ts"
   }
 }
