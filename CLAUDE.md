@@ -59,7 +59,7 @@ npm test   # from repo root
 
 ## Production path
 
-See `docs/production-roadmap.md`. **Phase 0 complete**. **Phase 1 in progress**: `docs/protocol-spec.md`, `Signer`/`YieldProofVerifier` + `Mock*`, `sim/` + property tests. Remaining P1: human spec review. Then Phase 2 testnet vertical slice. Production/mainnet is P4+ only after testnet slice and audit gates.
+See `docs/production-roadmap.md`. **Phase 0–1 complete**. **Phase 2 current**: one testnet vertical slice (recommended: block-hash → draw inputs). Production/mainnet is P4+ only after testnet slice and audit gates.
 
 ## Related docs
 

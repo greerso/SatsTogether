@@ -5,13 +5,12 @@
 - Remote: `https://github.com/greerso/SatsTogether.git`
 
 ## Done
-- Phase 0 + Phase 1 sim on main
-- Opus critical-assessment of `docs/protocol-spec.md` → `.hybrid/protocol-spec-critical-assessment.md`
-- Follow-up branch: fix QV honesty, first-valid, burn concentration, error catalog, attempt-budget parity
+- Phase 0 + Phase 1 complete on main (spec human-reviewed 2026-07-12)
+- Opus critical-assessment + follow-ups merged
 
 ## Next
-1. Human accept remaining P1 “spec reviewed” (after this PR lands)
-2. Phase 2: testnet block-hash → draw inputs
+1. Phase 2: testnet block-hash → draw inputs vertical slice
+2. Update `docs/testnet-guide.md` runbook for that slice
 
 ## Workflow
 - Always: commit → PR → code-review → fix → squash-merge

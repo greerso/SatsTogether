@@ -19,7 +19,7 @@ For a **Bitcoin L1 prize-linked savings protocol** with principal-protection cla
 | **P4 — Mainnet capped** | Mainnet with hard TVL cap, kill-switch policy, monitoring; legal review complete |
 | **P5 — Production scale** | Cap raised only after audits + ops maturity |
 
-**We are in Phase 1 (spec & sim).** Phase 0 unit foundation is green. BitVM2 fraud proofs, real yield, and principal vaults remain **design goals**, not deliverables of P0–P1.
+**We are in Phase 2 (testnet vertical slice).** Phase 0–1 offline foundation is complete. BitVM2 fraud proofs, real yield, and principal vaults remain **design goals**, not deliverables of P0–P2.
 
 ---
 
@@ -64,7 +64,7 @@ Real Bitcoin, Lightning, BitVM2 circuits, mainnet scripts that succeed, legal si
 
 ---
 
-## Phase 1 — Spec & deterministic simulation *(current focus)*
+## Phase 1 — Spec & deterministic simulation *(complete)*
 
 **Goal:** One written protocol you can implement against without inventing behavior.
 
@@ -77,14 +77,14 @@ Real Bitcoin, Lightning, BitVM2 circuits, mainnet scripts that succeed, legal si
 
 ### Exit criteria
 
-- [ ] Spec reviewed (human) for internal consistency  
+- [x] Spec reviewed (human) for internal consistency — 2026-07-12 (Danny; after Opus critical-assessment + follow-up #5)  
 - [x] Simulator tests cover: zero shares, n winners > n shares, duplicate rejection, deterministic seeds (`tests/sim.test.ts`, `sim/`)  
 - [x] Interfaces defined; mocks implement interfaces explicitly labeled `Mock*` (`Signer`/`MockSigner`, `YieldProofVerifier`/`MockBitVMVerifier`)  
 - [x] Local gate runs P0+P1 tests via `./scripts/smoke-test.sh` (no paid GH Actions required)  
 
 ---
 
-## Phase 2 — Testnet vertical slice
+## Phase 2 — Testnet vertical slice *(current focus)*
 
 **Goal:** One **real** testnet integration path, not a full product.
 
@@ -164,11 +164,11 @@ Raise caps, multi-source yield, pods, QF treasury — only after P4 stability pe
 
 ## Immediate next actions (ordered)
 
-1. **Human-review** `docs/protocol-spec.md` for internal consistency (last P1 exit box).  
-2. Optional: keep golden vectors in lockstep when changing `placeholder_mix` (Rust + TS tests).  
-3. Start **Phase 2** slice design: testnet block-hash → draw inputs (recommended first vertical).  
+1. Start **Phase 2** recommended slice: testnet block-hash → draw inputs (still off-chain selection).  
+2. Document testnet runbook a second person can follow (`docs/testnet-guide.md` update).  
+3. Keep golden vectors in lockstep when changing `placeholder_mix` (Rust + TS tests).  
 4. Defer UI polish and mainnet deploy work until P2+.  
-5. Use hybrid pipeline: Claude for spec/review, Grok for implement (`docs/hybrid-workflow.md`).
+5. Use hybrid pipeline: Claude for plan/review, Grok for implement (`docs/hybrid-workflow.md`).
 
 ---
 
@@ -187,5 +187,6 @@ Raise caps, multi-source yield, pods, QF treasury — only after P4 stability pe
 |---------|------|-------|
 | 0.1.0 | 2026-07-12 | First real production roadmap; P0 kickoff |
 | 0.2.0 | 2026-07-12 | P0 complete; P1 sim + interfaces in progress |
+| 0.3.0 | 2026-07-12 | P1 complete (human spec review); Phase 2 current |
 
 Related: `docs/audit-checklist.md`, `docs/testnet-guide.md`, `docs/legal-framing.md`, `CLAUDE.md`, `scripts/hybrid-pipeline.sh`.

@@ -88,8 +88,8 @@ MIT — Fork freely. See `docs/fork-policy.md`.
 - **Early prototype / design stage.** Nothing here has been deployed or audited.
 - Core protocol (BitVM2 draws, yield proofs, covenant vaults) is **not implemented** — `bitvm/`, `yield-adapters/`, and `governance/` are design references / mocks, not production security boundaries.
 - Frontend is a UI mockup, not a functional client.
-- **Phase 0 unit tests** + **Phase 1 sim/interfaces** (`sim/`, `Signer`/`YieldProofVerifier`, property tests). `./scripts/smoke-test.sh` runs them. This is **not** testnet/mainnet readiness.
-- **Production path:** `docs/production-roadmap.md` (P0 foundation → P1 spec/sim → P2 testnet slice → P3 audit → P4 capped mainnet → P5 scale).
+- **Phase 0–1 complete** (unit tests, sim/interfaces, human-reviewed protocol-spec). `./scripts/smoke-test.sh` is the local gate. This is **not** testnet/mainnet readiness.
+- **Production path:** `docs/production-roadmap.md` (P0 → P1 → **P2 testnet slice** → P3 audit → P4 capped mainnet → P5 scale).
 - Mainnet deployment and the TVL cap are unimplemented design goals; audits have not happened and are not scheduled.
 
 Built with ❤️ for Bitcoin. No VCs. No premine. Pure decentralization.
