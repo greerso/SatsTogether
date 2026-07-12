@@ -1,0 +1,33 @@
+/* Base styles carried over verbatim from the SatsTogether Flow design canvas. */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #efe7da;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: #ee6b12;
+  text-decoration: none;
+}
+a:hover {
+  color: #c9560a;
+}
+/* Display face — apply to headings / numerals that use Bricolage Grotesque. */
+.disp {
+  font-family: 'Bricolage Grotesque', 'Instrument Sans', sans-serif;
+}
+/* A full-bleed app screen inside a device frame. */
+.scr {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
