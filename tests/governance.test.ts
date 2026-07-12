@@ -1,13 +1,19 @@
 /**
- * Phase 0 unit tests — governance mock crypto + quadratic tally.
+ * Phase 0/1 unit tests — governance mock crypto + quadratic tally.
  * Run: npm test (from repo root)
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { signMessage, verifyMessage, VERSION as CRYPTO_VERSION } from '../governance/crypto.ts';
+import {
+  signMessage,
+  verifyMessage,
+  MockSigner,
+  VERSION as CRYPTO_VERSION,
+} from '../governance/crypto.ts';
 import { castVote, tallyVotes, VERSION as VOTING_VERSION } from '../governance/voting.ts';
+import type { Signer } from '../governance/signer.ts';
 
-describe('governance crypto (mock)', () => {
+describe('governance crypto (MockSigner)', () => {
   it('exports prototype version', () => {
     assert.match(CRYPTO_VERSION, /prototype/);
   });
@@ -28,6 +34,13 @@ describe('governance crypto (mock)', () => {
   it('rejects wrong key', async () => {
     const sig = await signMessage('hello', 'alice');
     assert.equal(verifyMessage('hello', sig, 'bob'), false);
+  });
+
+  it('MockSigner is injectable into castVote/tallyVotes', async () => {
+    const signer: Signer = new MockSigner();
+    const vote = await castVote('DLC', 4, 'alice', 'alice', signer);
+    const r = tallyVotes([vote], signer);
+    assert.equal(r.winner, 'DLC');
   });
 });
 

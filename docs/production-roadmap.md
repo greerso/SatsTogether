@@ -19,7 +19,7 @@ For a **Bitcoin L1 prize-linked savings protocol** with principal-protection cla
 | **P4 — Mainnet capped** | Mainnet with hard TVL cap, kill-switch policy, monitoring; legal review complete |
 | **P5 — Production scale** | Cap raised only after audits + ops maturity |
 
-**We are at pre-P0 / entering P0.** BitVM2 fraud proofs, real yield, and principal vaults are **design goals**, not deliverables of P0–P1.
+**We are in Phase 1 (spec & sim).** Phase 0 unit foundation is green. BitVM2 fraud proofs, real yield, and principal vaults remain **design goals**, not deliverables of P0–P1.
 
 ---
 
@@ -32,12 +32,12 @@ For a **Bitcoin L1 prize-linked savings protocol** with principal-protection cla
 | Governance crypto | Mock hash “signatures”, not BIP-322 |
 | Yield | Mock deterministic yields |
 | Frontend | Expo UI mock, not wired to chain |
-| Tests | Partial Rust unit tests in `draw_verifier.rs`; **no** TS suite; smoke script always fails |
+| Tests | Rust draw unit tests + root `npm test` (governance, yield, sim); `./scripts/smoke-test.sh` green when both pass |
 | Legal / audit | Framing docs only; checklist all unchecked |
 
 ---
 
-## Phase 0 — Honest foundation *(current focus)*
+## Phase 0 — Honest foundation *(complete on main as of #2)*
 
 **Goal:** Anything we ship is measurable, testable, and non-misleading.
 
@@ -64,7 +64,7 @@ Real Bitcoin, Lightning, BitVM2 circuits, mainnet scripts that succeed, legal si
 
 ---
 
-## Phase 1 — Spec & deterministic simulation
+## Phase 1 — Spec & deterministic simulation *(current focus)*
 
 **Goal:** One written protocol you can implement against without inventing behavior.
 
@@ -78,9 +78,9 @@ Real Bitcoin, Lightning, BitVM2 circuits, mainnet scripts that succeed, legal si
 ### Exit criteria
 
 - [ ] Spec reviewed (human) for internal consistency  
-- [ ] Simulator tests cover: zero shares, n winners > n shares, duplicate rejection, deterministic seeds  
-- [ ] Interfaces defined; mocks implement interfaces explicitly labeled `Mock*`  
-- [ ] CI on GitHub (or local pre-push) runs P0+P1 tests *(note: prefer no paid GH Actions if avoided — local `smoke-test.sh` + optional free CI)*  
+- [x] Simulator tests cover: zero shares, n winners > n shares, duplicate rejection, deterministic seeds (`tests/sim.test.ts`, `sim/`)  
+- [x] Interfaces defined; mocks implement interfaces explicitly labeled `Mock*` (`Signer`/`MockSigner`, `YieldProofVerifier`/`MockBitVMVerifier`)  
+- [x] Local gate runs P0+P1 tests via `./scripts/smoke-test.sh` (no paid GH Actions required)  
 
 ---
 
@@ -164,10 +164,11 @@ Raise caps, multi-source yield, pods, QF treasury — only after P4 stability pe
 
 ## Immediate next actions (ordered)
 
-1. **Complete Phase 0** (this sprint): tests + smoke + this roadmap.  
-2. Start Phase 1: protocol-spec outline + `Signer` / `YieldProofVerifier` interfaces.  
-3. Defer UI polish and mainnet deploy work until P2+.  
-4. Use hybrid pipeline: Claude for spec/review, Grok for test/implement scaffolding (`docs/hybrid-workflow.md`).
+1. **Human-review** `docs/protocol-spec.md` for internal consistency (last P1 exit box).  
+2. Optional: golden-vector test that TS `sim/draw.ts` matches Rust `select_winners` on fixed fixtures.  
+3. Start **Phase 2** slice design: testnet block-hash → draw inputs (recommended first vertical).  
+4. Defer UI polish and mainnet deploy work until P2+.  
+5. Use hybrid pipeline: Claude for spec/review, Grok for implement (`docs/hybrid-workflow.md`).
 
 ---
 
@@ -185,5 +186,6 @@ Raise caps, multi-source yield, pods, QF treasury — only after P4 stability pe
 | Version | Date | Notes |
 |---------|------|-------|
 | 0.1.0 | 2026-07-12 | First real production roadmap; P0 kickoff |
+| 0.2.0 | 2026-07-12 | P0 complete; P1 sim + interfaces in progress |
 
 Related: `docs/audit-checklist.md`, `docs/testnet-guide.md`, `docs/legal-framing.md`, `CLAUDE.md`, `scripts/hybrid-pipeline.sh`.

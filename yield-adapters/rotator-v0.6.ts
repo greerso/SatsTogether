@@ -1,10 +1,11 @@
 // SatsTogether Yield Rotator v0.6
 // Max-yield source selection + liquidity buffer + multi-source rotation
 //
-// PROTOTYPE — yield figures come from the mocked BitVMVerifier (see
-// ../bitvm/verifier); no real yield is sourced, verified, or settled.
+// PROTOTYPE — yield figures come from a YieldProofVerifier (default:
+// MockBitVMVerifier). No real yield is sourced, verified, or settled.
 
-import { BitVMVerifier } from '../bitvm/verifier.ts';
+import { MockBitVMVerifier } from '../bitvm/verifier.ts';
+import type { YieldProofVerifier } from '../bitvm/yield-proof.ts';
 
 export const VERSION = '0.1.0-prototype';
 
@@ -37,8 +38,13 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Pro
 }
 
 export class YieldRotatorV0_6 {
-  private verifier = new BitVMVerifier();
+  private verifier: YieldProofVerifier;
   private sources = ['DLC', 'Ark', 'BitVMWrapper'] as const;
+
+  /** Inject a YieldProofVerifier (defaults to MockBitVMVerifier). */
+  constructor(verifier?: YieldProofVerifier) {
+    this.verifier = verifier ?? new MockBitVMVerifier();
+  }
 
   async rotateAndRoute(poolState: PoolState) {
     const results = await this.checkAllSources();

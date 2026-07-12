@@ -1,23 +1,41 @@
-// SatsTogether Governance Signing
+// SatsTogether Governance Signing — MOCK ONLY
 //
-// PROTOTYPE MOCK — NOT real Bitcoin (BIP-322 / message) signing. Replace
-// with a real signer before any use.
+// Implements Signer with deterministic hash "signatures". NOT BIP-322,
+// NOT elliptic-curve crypto. Replace with a real Signer before any use.
+
+import type { Signer } from './signer.ts';
 
 export const VERSION = '0.1.0-prototype';
+export type { Signer } from './signer.ts';
 
-// Deterministic mock signature: a hash of message+privKey, not a real
-// Bitcoin signature. Anyone who knows the "private key" string can
-// reproduce it; there is no actual elliptic-curve cryptography involved.
-export async function signMessage(message: string, privKey: string): Promise<string> {
-  return `mock-sig:${simpleHash(message + ':' + privKey)}`;
+/**
+ * MockSigner — prototype only.
+ *
+ * Signature = hash(message + ':' + keyMaterial). Verification recomputes the
+ * same hash using the claimed pubkey in place of the private key, so it only
+ * "verifies" when pubkey === privKey string (mock keypair convention).
+ */
+export class MockSigner implements Signer {
+  async signMessage(message: string, privKey: string): Promise<string> {
+    return `mock-sig:${simpleHash(message + ':' + privKey)}`;
+  }
+
+  verifyMessage(message: string, signature: string, pubKey: string): boolean {
+    return signature === `mock-sig:${simpleHash(message + ':' + pubKey)}`;
+  }
 }
 
-// Matching mock verifier: recomputes the same hash using the claimed
-// pubkey in place of the privKey. This only "verifies" signatures produced
-// by signMessage above with pubKey === privKey — it is not real signature
-// verification against a Bitcoin public key.
+/** Default mock instance for convenience wrappers and existing call sites. */
+export const defaultMockSigner: Signer = new MockSigner();
+
+/** @deprecated Prefer injecting Signer; kept for Phase 0 call-site compat. */
+export async function signMessage(message: string, privKey: string): Promise<string> {
+  return defaultMockSigner.signMessage(message, privKey);
+}
+
+/** @deprecated Prefer injecting Signer; kept for Phase 0 call-site compat. */
 export function verifyMessage(message: string, signature: string, pubKey: string): boolean {
-  return signature === `mock-sig:${simpleHash(message + ':' + pubKey)}`;
+  return defaultMockSigner.verifyMessage(message, signature, pubKey);
 }
 
 function simpleHash(input: string): string {

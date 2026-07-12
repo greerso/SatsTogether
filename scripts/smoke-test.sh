@@ -7,10 +7,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "SatsTogether Smoke Test (Phase 0 — unit level)"
-echo "=============================================="
+echo "SatsTogether Smoke Test (Phase 0+1 — unit/sim level)"
+echo "===================================================="
 echo "Repo: $ROOT"
-echo "This verifies offline pure-logic tests only."
+echo "This verifies offline pure-logic + Phase 1 sim/interface tests only."
 echo "It does NOT verify Bitcoin, Lightning, BitVM2 circuits, or mainnet safety."
 echo
 
@@ -49,10 +49,10 @@ fi
 
 echo
 if [[ "$FAIL" -ne 0 ]]; then
-  echo "SMOKE FAILED — fix unit tests before claiming Phase 0 complete."
+  echo "SMOKE FAILED — fix unit/sim tests before claiming P0/P1 logic green."
   exit 1
 fi
 
-echo "SMOKE PASSED (Phase 0 unit tests only)."
-echo "Next: see docs/production-roadmap.md Phase 1."
+echo "SMOKE PASSED (Phase 0+1 offline unit/sim tests only)."
+echo "Next: human review of docs/protocol-spec.md; then Phase 2 testnet slice."
 exit 0
