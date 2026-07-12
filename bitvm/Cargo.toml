@@ -1,0 +1,7 @@
+[package]
+name = "satstogether-draw"
+version = "0.1.0-prototype"
+edition = "2021"
+
+[lib]
+path = "draw_verifier.rs"

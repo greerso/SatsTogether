@@ -1,0 +1,26 @@
+# SatsTogether 0.1.0-prototype — Public Immutable Schema (design reference, not deployed)
+name = "SatsTogether"
+version = "0.1.0-prototype"
+description = "Decentralized prize-linked savings on Bitcoin L1 (design goal: principal always protected). PROTOTYPE — not implemented, not deployed, not audited."
+
+[asset]
+type = "fungible"
+ticker = "SATSHARE"
+privacy = "zero-knowledge"
+
+[rules]
+deposit = "User-controlled. Mint 1:1 shares instantly via Taproot Assets."
+withdraw = "Principal always available. No lockup. No third-party approval."
+yield = "Only from verified DLC/Ark/BitVM sources. Real-time BitVM2 proofs required."
+draw = "Bitcoin block hash + commit-reveal (MEV-resistant). Multiple winners supported."
+pods = "Shared groups. On-chain proportional prize splitting."
+covenants = "Auto-migration when OP_CTV/OP_CAT activate (stronger on-chain principal vaults)."
+fallback = "If yield unavailable, rollover to next draw. Design goal: principal remains safe (NOT yet enforced)."
+
+# NOTE: the [rules] values above are DESIGN GOALS describing intended behavior.
+# None are implemented or machine-enforced by this file — Taproot Assets does not
+# consume this prose. "MEV-resistant", "Principal 100% safe", and "real-time BitVM2
+# proofs" are unbuilt; see README status and docs/audit-checklist.md.
+
+# Legal & transparency
+legal_note = "Intended as prize-linked savings. Regulatory/gambling classification is jurisdiction-dependent and has NOT been legally reviewed — see docs/legal-framing.md. Not legal advice."
