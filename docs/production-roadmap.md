@@ -19,7 +19,7 @@ For a **Bitcoin L1 prize-linked savings protocol** with principal-protection cla
 | **P4 — Mainnet capped** | Mainnet with hard TVL cap, kill-switch policy, monitoring; legal review complete |
 | **P5 — Production scale** | Cap raised only after audits + ops maturity |
 
-**We are in Phase 2 (testnet vertical slice).** Phase 0–1 offline foundation is complete. BitVM2 fraud proofs, real yield, and principal vaults remain **design goals**, not deliverables of P0–P2.
+**We are completing Phase 2 (testnet vertical slice: block-hash → draw).** Phase 0–1 offline foundation is complete. BitVM2 fraud proofs, real yield, and principal vaults remain **design goals**, not deliverables of P0–P2.
 
 ---
 
@@ -84,7 +84,7 @@ Real Bitcoin, Lightning, BitVM2 circuits, mainnet scripts that succeed, legal si
 
 ---
 
-## Phase 2 — Testnet vertical slice *(current focus)*
+## Phase 2 — Testnet vertical slice *(slice complete: block-hash → draw)*
 
 **Goal:** One **real** testnet integration path, not a full product.
 
@@ -96,10 +96,12 @@ Pick **one** slice (recommended order):
 
 ### Exit criteria
 
-- [ ] Documented testnet runbook that a second person can follow  
-- [ ] Automated or scripted check against testnet (can fail soft if network down, but code path real)  
-- [ ] Frontend or CLI shows **testnet-only** banners; no mainnet defaults  
-- [ ] `deploy-mainnet.sh` still refuses  
+- [x] Documented testnet runbook that a second person can follow (`docs/testnet-guide.md`)  
+- [x] Automated or scripted check against testnet (`npm run testnet:draw` / `./scripts/testnet-check.sh`; soft-fail if network down)  
+- [x] CLI shows **testnet-only** banners; no mainnet defaults (`scripts/testnet-draw.ts`)  
+- [x] `deploy-mainnet.sh` still refuses  
+
+**Slice shipped:** randomness / draw inputs from public testnet (or signet) explorer REST → offline `selectWinners`. Not Lightning, not vaults, not BitVM2.
 
 ---
 
@@ -164,11 +166,11 @@ Raise caps, multi-source yield, pods, QF treasury — only after P4 stability pe
 
 ## Immediate next actions (ordered)
 
-1. Start **Phase 2** recommended slice: testnet block-hash → draw inputs (still off-chain selection).  
-2. Document testnet runbook a second person can follow (`docs/testnet-guide.md` update).  
-3. Keep golden vectors in lockstep when changing `placeholder_mix` (Rust + TS tests).  
-4. Defer UI polish and mainnet deploy work until P2+.  
-5. Use hybrid pipeline: Claude for plan/review, Grok for implement (`docs/hybrid-workflow.md`).
+1. Optional: re-run live `./scripts/testnet-check.sh` on a second machine / person.  
+2. Keep Phase 2 honest — do not claim full product; pick next slice only if needed (LN testnet UX or Taproot Assets).  
+3. Phase 3 prep only after a stable testnet path and clear audit scope.  
+4. Defer UI polish and mainnet deploy work.  
+5. Hybrid pipeline for larger design changes (`docs/hybrid-workflow.md`).
 
 ---
 

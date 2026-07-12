@@ -1,25 +1,111 @@
-# SatsTogether Testnet Guide (0.1.0-prototype)
+# SatsTogether Testnet Guide (Phase 2)
 
-This is a **prototype**. There is no testnet deployment, and `./scripts/deploy-testnet.sh` **does not exist**. Right now you can only:
+**TESTNET / SIGNET ONLY.** Not mainnet. Not audited. Do not use real funds.
 
-1. Clone repo: `git clone ... && cd SatsTogether`
-2. Read the code in `schema/`, `bitvm/`, `yield-adapters/`, and `governance/` as a design reference — it does not run.
-3. Optionally set up a frontend toolchain and run the UI mockup: `cd frontend && npm install && npm start` (Expo). This renders mockup screens only; it is not wired to any real Bitcoin, Lightning, or BitVM2 backend.
+Phase 2 vertical slice (current): **real Bitcoin testnet block hashes → offline draw model**.
 
-See README.md for the full feature list, architecture, and current status.
+This is **not** a full product, vault, Lightning deposit, or BitVM2 circuit. Selection still uses `sim/draw.ts` (`placeholder_mix`, not production RNG security).
 
-## Testing Checklist (design goals — none of these are working flows yet)
-- [ ] Deposit BTC → receive SatsShare tokens (not implemented)
-- [ ] Withdraw principal instantly via Lightning (not implemented)
-- [ ] View live Yield Health + BitVM2 proofs (not implemented)
-- [ ] Participate in draw (multiple winners) (not implemented)
-- [ ] Create/Join a Pod and split prizes (not implemented)
-- [ ] Build a savings streak and earn badges (not implemented)
-- [ ] Opt-in to optional quadratic community contribution (not implemented)
-- [ ] Run your own light-client indexer (not implemented)
-- [ ] Export tax CSV of prizes (not implemented)
-- [ ] Trigger/test covenant migration (not implemented)
+---
 
-These are the flows the design aims for; none exist yet. There is nothing to test end-to-end today.
+## Prerequisites
 
-Report issues in the repo. No testnet or mainnet deployment exists.
+- Node.js 22+ recommended (uses `node --experimental-strip-types`)
+- Network access to a public explorer REST API (default: `mempool.space` testnet)
+- Repo clone; no Bitcoin full node required for this slice
+
+```bash
+git clone https://github.com/greerso/SatsTogether.git
+cd SatsTogether
+# no npm install required for root pure TS (Node built-in test + strip-types)
+```
+
+---
+
+## Phase 2 runbook — draw from testnet block hashes
+
+### 1. Offline unit gate (always)
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
+./scripts/smoke-test.sh
+```
+
+Must exit 0. This does **not** hit the network.
+
+### 2. Unit tests for the testnet module (mocked HTTP)
+
+```bash
+npm test
+# includes tests/testnet.test.ts (mocked fetch)
+```
+
+### 3. Live soft-check (network may be down)
+
+```bash
+./scripts/testnet-check.sh
+# or:
+npm run testnet:draw -- --shares 1000 --winners 5 --seed satstogether-testnet-demo
+```
+
+Expected when online:
+
+- Banner: **TESTNET / SIGNET ONLY**
+- Tip height pair and two 64-char block hashes
+- Winner share indices from offline `selectWinners`
+
+Expected when offline / explorer down:
+
+- Message: `SOFT FAIL (network): ...`
+- **Exit 0** (soft-fail by design so local/CI is not red on flaky net)
+
+### 4. Signet (optional)
+
+```bash
+npm run testnet:draw -- --network signet --shares 500 --winners 3 --seed demo
+```
+
+### 5. Live unit path (optional)
+
+```bash
+RUN_LIVE_TESTNET=1 npm test
+```
+
+Skips the live case unless env is set.
+
+### 6. Mainnet
+
+- **Not supported** as a default or CLI flag for this tool.
+- `scripts/deploy-mainnet.sh` must still refuse (verify: `./scripts/deploy-mainnet.sh` exits non-zero).
+
+---
+
+## What this proves / does not prove
+
+| Proves | Does not prove |
+|--------|----------------|
+| Code can read real testnet tip hashes | Principal protection / vaults |
+| Hashes feed `selectWinners` deterministically | BitVM2 fraud proofs |
+| Soft-fail when explorer unreachable | MEV-resistant commit-reveal |
+| CLI banners testnet-only | Production readiness |
+
+---
+
+## Troubleshooting
+
+| Symptom | Action |
+|---------|--------|
+| Soft fail network | Check internet; try again; use mocked `npm test` |
+| `unknown option` / bad args | `npm run testnet:draw -- --help` |
+| Cargo missing | Install rustup; smoke needs `cargo test` for full gate |
+| Want different explorer | Not configurable in v1 except internal `baseUrl` for tests |
+
+---
+
+## Older checklist (still design goals — not this slice)
+
+- [ ] Deposit BTC → SatsShare (not implemented)
+- [ ] Withdraw principal via Lightning (not implemented)
+- [ ] Pods, badges, tax CSV, etc. (not implemented)
+
+Report issues in the repo.

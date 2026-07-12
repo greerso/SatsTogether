@@ -54,5 +54,5 @@ if [[ "$FAIL" -ne 0 ]]; then
 fi
 
 echo "SMOKE PASSED (Phase 0+1 offline unit/sim tests only)."
-echo "Next: Phase 2 testnet vertical slice (block-hash → draw inputs)."
+echo "Phase 2 live soft-check (optional): ./scripts/testnet-check.sh"
 exit 0

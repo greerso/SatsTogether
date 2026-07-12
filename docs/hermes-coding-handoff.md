@@ -5,14 +5,15 @@
 - Remote: `https://github.com/greerso/SatsTogether.git`
 
 ## Done
-- Phase 0 + Phase 1 complete on main (spec human-reviewed 2026-07-12)
-- Opus critical-assessment + follow-ups merged
+- Phase 0–1 complete (spec human-reviewed)
+- Phase 2 slice: `testnet/` + `npm run testnet:draw` + runbook in `docs/testnet-guide.md`
 
 ## Next
-1. Phase 2: testnet block-hash → draw inputs vertical slice
-2. Update `docs/testnet-guide.md` runbook for that slice
+1. Optional second-person live testnet check
+2. Phase 3 only after deliberate audit scope — do not overclaim P2
 
 ## Workflow
 - Always: commit → PR → code-review → fix → squash-merge
 - Local gate: `export PATH="$HOME/.cargo/bin:$PATH" && ./scripts/smoke-test.sh`
+- Live soft: `./scripts/testnet-check.sh`
 - End of turn: always suggest next step
