@@ -1,71 +1,299 @@
-# SatsTogether Protocol Spec (Phase 1 draft)
+# SatsTogether Protocol Spec (Phase 1)
 
-**Status:** Draft outline for Phase 1. Not implemented. Not auditable as a complete protocol yet.
+**Status:** Implementation-oriented draft for offline sim + interfaces.  
+**Not audited. Not mainnet. Spec is authoritative for `sim/` and pure logic only.**  
+On-chain vaults, BitVM2 circuits, and Lightning settlement are **design targets** called out explicitly as unimplemented.
+
+Related: `docs/threat-model.md`, `docs/production-roadmap.md`, `sim/`, `bitvm/draw_verifier.rs`.
+
+---
+
+## 0. Scope & honesty
+
+| In scope (Phase 1) | Out of scope (later phases) |
+|--------------------|-----------------------------|
+| Share accounting rules (sim) | Covenant/BitVM principal vaults |
+| Draw selection algorithm (reference) | BitVM2 fraud proofs / bonds |
+| Yield proof **interface** | Real DLC/Ark yield proofs |
+| Signer **interface** | BIP-322 / wallet signing |
+| Governance tally (mock sigs) | Sybil-resistant identity |
+| Prize pool accounting (sim) | Lightning claim/withdraw rails |
+
+Code map:
+
+| Concern | Module |
+|---------|--------|
+| Draw selection (Rust ref) | `bitvm/draw_verifier.rs` |
+| Draw selection (TS sim) | `sim/draw.ts` |
+| Share ledger sim | `sim/ledger.ts` |
+| Signer interface | `governance/signer.ts` |
+| Mock signer | `governance/crypto.ts` (`MockSigner`) |
+| Yield proof interface | `bitvm/yield-proof.ts` |
+| Mock yield verifier | `bitvm/verifier.ts` (`MockBitVMVerifier`) |
+| Yield source rotation | `yield-adapters/rotator-v0.6.ts` |
+| QV tally | `governance/voting.ts` |
+
+---
 
 ## 1. Actors
 
-| Actor | Role |
-|-------|------|
-| Depositor | Locks BTC (design: principal-protected vault); receives SatsShare units |
-| Prover | Submits yield / state claims with bonds (BitVM2 design) |
-| Challenger | Disputes invalid proofs |
-| Draw coordinator | Off-chain selection model today; on-chain commit-reveal design goal |
-| Pod member | Optional pooled odds; fair split design goal |
+| Actor | Role | Phase 1 reality |
+|-------|------|-----------------|
+| Depositor | Locks BTC; receives share units | Sim only (`ShareLedger.deposit`) |
+| Prover | Submits yield claims + bond | Unimplemented |
+| Challenger | Disputes invalid proofs | Unimplemented |
+| Draw coordinator | Combines seeds → winners | Offline `selectWinners` |
+| Pod member | Pooled odds / prize split | Unimplemented |
+| Voter | Quadratic vote on yield source | Mock signatures only |
 
-## 2. Assets & state (design)
+---
 
-- **Principal:** BTC under covenant/vault rules (unimplemented).
-- **SatsShare:** Client-side validated Taproot Asset units representing pool participation (schema sketch only).
-- **Yield pool:** Accrued yield available for prizes / optional QF (mock only today).
-- **Liquidity buffer:** Optional shortfall buffer (prototype accounting in rotator).
+## 2. Units & assets
 
-## 3. Lifecycle (target flows)
+### 2.1 Principal
 
-1. **Deposit** — BTC in → SatsShare out; principal remains claimable per vault rules.  
-2. **Accrue yield** — external sources produce proofs; rotator selects source (mock).  
-3. **Draw** — seed from block hashes + committed user seed → winner share indices (off-chain reference model exists; not BitVM2 circuit).  
-4. **Claim prize** — winners receive yield sats (not principal).  
-5. **Withdraw principal** — Lightning or on-chain path (unimplemented).  
-6. **Pods** — join/leave; prize split (unimplemented).  
+- Denominated in **sats** (integer, non-negative).
+- Design goal: principal remains claimable regardless of draw outcomes.
+- Phase 1 sim enforces this accounting-wise (`withdraw` returns full `principalSats` even after draws).
 
-## 4. Draw algorithm (current reference model)
+### 2.2 SatsShare
 
-See `bitvm/draw_verifier.rs` (`select_winners`):
+- Participation unit in the prize pool.
+- **Sim parameter:** `SATS_PER_SHARE` (default `1000`). Deposit amount must be a multiple.
+- Share indices are global, non-negative integers assigned contiguously at mint time.
+- Withdrawn shares are **burned** (index becomes unowned). High-water `nextShareIndex` does not shrink (indices stay stable).
 
-- Inputs: `block_hash_n`, `block_hash_n1`, `user_seed`, `total_shares`, `num_winners`.
-- Combine by XOR; expand with `placeholder_mix` (NOT SHA-256 — must replace for production).
-- Rejection sampling for modulo bias; unique indices.
+### 2.3 Yield pool
 
-### Production requirements (not met)
+- Accrued prize budget in sats.
+- Increased by `accrueYield` (sim) / future verified proofs.
+- Decreased only by prize payouts (and explicit buffer policy in rotator, separate from share ledger).
 
-- [ ] Real SHA-256 (or circuit-equivalent) in BitVM2  
+### 2.4 Liquidity buffer (rotator)
+
+- Optional shortfall buffer tracked by `YieldRotatorV0_6` pool state.
+- Drawn down only when **all** configured yield sources fail validity checks.
+- Not principal; not share-backed.
+
+---
+
+## 3. Lifecycle (state machine)
+
+```
+[idle]
+  | deposit(account, principalSats)
+  v
+[position open] --accrueYield--> [position open, yield↑]
+  | draw(seeds, numWinners)
+  v
+[position open, yield↓, draw recorded]
+  | withdraw(account)
+  v
+[idle for account; shares burned]
+```
+
+### 3.1 Deposit
+
+**Preconditions**
+
+- `principalSats > 0`
+- `principalSats % SATS_PER_SHARE == 0`
+- Sim v1: account has no open position
+
+**Effects**
+
+- `shareCount = principalSats / SATS_PER_SHARE`
+- Assign indices `[nextShareIndex, nextShareIndex + shareCount)`
+- `nextShareIndex += shareCount`
+- Principal recorded on position
+
+**Failure modes**
+
+- Non-multiple principal → reject
+- Duplicate open position (sim v1) → reject
+
+### 3.2 Accrue yield
+
+**Preconditions:** `amountSats >= 0`  
+**Effects:** `yieldPool += amountSats`  
+**Non-effects:** Does not mint shares; does not change principal.
+
+Production: amount must come from `YieldProofVerifier.isValidYieldProof` + settlement rules (unimplemented).
+
+### 3.3 Draw
+
+**Inputs**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `block_hash_n` | 32 bytes | Design: Bitcoin block hash at height n |
+| `block_hash_n1` | 32 bytes | Design: adjacent block for entropy |
+| `user_seed` | 32 bytes | Design: commit-reveal before hashes known |
+| `total_shares` / space | u64 | Sim uses high-water `nextShareIndex` |
+| `num_winners` | u32 | Requested winner slots |
+
+**Algorithm** (reference — must match Rust + TS):
+
+1. If space == 0 → return `[]`.
+2. `combined[i] = block_hash_n[i] XOR block_hash_n1[i] XOR user_seed[i]`.
+3. `target = min(num_winners, space)`.
+4. Expand with `placeholder_mix(combined, counter)` (NOT SHA-256).
+5. Take first 8 bytes as little-endian u64 candidate.
+6. Rejection sampling: discard if `candidate >= limit` where  
+   `limit = u64::MAX - (u64::MAX % space)` to remove modulo bias.
+7. `index = candidate % space`; skip if already selected.
+8. Cap attempts; return distinct indices in selection order.
+
+**Prize settlement (sim)**
+
+- Filter winners to indices that still have an owner (skip burned).
+- `prizePerWinner = floor(yieldPool / liveWinnerCount)` (0 if none).
+- `paid = prizePerWinner * liveWinnerCount`.
+- `yieldPool -= paid`.
+- Record `DrawRecord`.
+
+**Production requirements (not met)**
+
+- [ ] Real SHA-256 (or circuit-equivalent) inside BitVM2  
 - [ ] Commit-reveal of `user_seed` before block hashes known  
 - [ ] On-chain binding of inputs  
 - [ ] Fraud proof / challenge game  
+- [ ] Explicit prize delivery rail (Lightning invoice / on-chain)
 
-## 5. Governance / yield source selection
+### 3.4 Claim prize
 
-- Quadratic weight = `sqrt(votes)` per pubkey; one vote per pubkey in tally.  
-- **Not sybil-resistant** under multi-key. See comments in `governance/voting.ts`.  
-- Signatures today are mock hashes (`governance/crypto.ts`), not BIP-322.
+- Design: winners receive **yield sats only**, never principal.
+- Sim: prizes are accounted in `DrawRecord`; per-account claim balance is future work.
+- Invariant: sum of prizes paid ≤ yield verified for that epoch (+ documented buffer policy).
 
-## 6. Invariants (must hold in any real implementation)
+### 3.5 Withdraw principal
 
-1. Principal withdrawable without depending on win/loss of draws.  
-2. Prize payments ≤ available verified yield (+ explicit buffer policy).  
-3. No central operator key can seize principal.  
-4. Draw inputs fixed before outcome; verifiable after.  
-5. Public auditability of state transitions.
+**Preconditions:** open position for account  
+**Effects:** burn all shares; return `principalSats`; remove ownership map entries  
+**Invariant:** withdraw success does not depend on win/loss history.
 
-## 7. Open questions
+### 3.6 Pods (unimplemented)
+
+- Join/leave pool; fair prize split among pod members when any member share wins.
+- Custody and exit rules TBD.
+
+---
+
+## 4. Interfaces (swap points for production)
+
+### 4.1 `Signer` (`governance/signer.ts`)
+
+```ts
+interface Signer {
+  signMessage(message: string, privKey: string): Promise<string>;
+  verifyMessage(message: string, signature: string, pubKey: string): boolean;
+}
+```
+
+| Impl | Label | Status |
+|------|-------|--------|
+| `MockSigner` | Mock* | Current default |
+| BIP-322 signer | (future) | Not implemented |
+
+**Mock contract:** verification succeeds when `pubKey` string equals the `privKey` string used to sign (no EC crypto).
+
+### 4.2 `YieldProofVerifier` (`bitvm/yield-proof.ts`)
+
+```ts
+interface YieldProof {
+  source: string;
+  yieldSats: number;
+  onChainProof: string | null;
+  valid: boolean;
+}
+
+interface YieldProofVerifier {
+  generateProof(source: string): Promise<YieldProof>;
+  isValidYieldProof(proof: YieldProof): boolean;
+}
+```
+
+| Impl | Label | Status |
+|------|-------|--------|
+| `MockBitVMVerifier` | Mock* | Deterministic fake yields |
+| On-chain BitVM2 verifier | (future) | Not implemented |
+
+**Mock validity:** `valid && onChainProof != null && yieldSats > 0`.
+
+### 4.3 Rotator dependency injection
+
+`YieldRotatorV0_6` accepts optional `YieldProofVerifier` (default `MockBitVMVerifier`). Production drops in a real verifier without changing rotation policy.
+
+---
+
+## 5. Governance (yield source selection)
+
+### 5.1 Vote message
+
+```
+Vote:{source}:{weight}
+```
+
+where `weight = sqrt(votes)` (IEEE floating; prototype only — production should use fixed-point).
+
+### 5.2 Tally rules
+
+1. Skip invalid signatures (`Signer.verifyMessage`).
+2. At most **one vote per pubkey** (first wins).
+3. Sum weights per `source`.
+4. Winner = source with maximum weight (ties: reduce picks last-seen max — document: unstable ties; production should break ties deterministically e.g. lexicographic source id).
+
+### 5.3 Explicit non-claim
+
+Quadratic weighting is **not sybil-resistant** under multi-key. See `governance/voting.ts` header and `docs/threat-model.md`.
+
+---
+
+## 6. Protocol invariants
+
+Must hold in any real implementation and are checked in sim tests where applicable:
+
+1. **Principal independence** — withdraw principal without depending on draw outcomes.  
+2. **Prize budget** — paid prizes ≤ available verified yield (+ explicit buffer policy).  
+3. **No admin seize** — no central operator key can seize principal (design; no vault yet).  
+4. **Draw binding** — inputs fixed before outcome; verifiable after (design; offline model only today).  
+5. **Share uniqueness in draw** — a single draw never returns duplicate indices.  
+6. **Index bounds** — every winner index `< share space`.  
+7. **Determinism** — identical seeds + space + num_winners → identical winner list.  
+8. **Auditability** — state transitions publicly reconstructible from inputs (sim snapshot).
+
+---
+
+## 7. Error catalog (sim / pure logic)
+
+| Code / condition | Where | Handling |
+|------------------|-------|----------|
+| zero share space | draw | empty winners |
+| num_winners > space | draw | cap at space |
+| non-multiple deposit | ledger | throw |
+| no position | withdraw | throw |
+| invalid mock sig | tally | skip vote |
+| all sources invalid | rotator | buffer path |
+
+---
+
+## 8. Open questions
 
 - Exact vault construction (CTV/CAT vs BitVM-only).  
-- Yield source whitelist and proof formats.  
+- Yield source whitelist and real proof formats.  
 - Pod custody and exit.  
-- Regulatory classification per jurisdiction.
+- Fixed-point vs float for QV weights.  
+- Prize claim UX (push vs pull) and tax lots.  
+- Tie-breaking for governance and multi-winner prize remainders (`yieldPool % n` stays in pool — intentional).  
+- Regulatory classification per jurisdiction (`docs/legal-framing.md`).
 
-## Related
+---
 
-- `docs/threat-model.md`  
-- `docs/production-roadmap.md`  
-- `docs/audit-checklist.md`  
+## 9. Version
+
+| Version | Date | Notes |
+|---------|------|-------|
+| 0.1.0-draft | 2026-07-12 | Outline |
+| 0.2.0-draft | 2026-07-12 | Implementation-ready: lifecycle, interfaces, sim map, invariants |
+
+Human review still required for Phase 1 exit criterion “spec reviewed (human) for internal consistency.”

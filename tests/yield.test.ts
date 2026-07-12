@@ -1,18 +1,19 @@
 /**
- * Phase 0 unit tests — mock BitVM verifier + yield rotator.
+ * Phase 0/1 unit tests — mock BitVM verifier + yield rotator.
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { BitVMVerifier, VERSION as VERIFIER_VERSION } from '../bitvm/verifier.ts';
+import { MockBitVMVerifier, BitVMVerifier, VERSION as VERIFIER_VERSION } from '../bitvm/verifier.ts';
 import { YieldRotatorV0_6, VERSION as ROTATOR_VERSION } from '../yield-adapters/rotator-v0.6.ts';
+import type { YieldProofVerifier } from '../bitvm/yield-proof.ts';
 
-describe('BitVMVerifier (mock)', () => {
+describe('MockBitVMVerifier', () => {
   it('exports prototype version', () => {
     assert.match(VERIFIER_VERSION, /prototype/);
   });
 
   it('generateProof is deterministic for a source', async () => {
-    const v = new BitVMVerifier();
+    const v = new MockBitVMVerifier();
     const a = await v.generateProof('DLC');
     const b = await v.generateProof('DLC');
     assert.equal(a.yieldSats, b.yieldSats);
@@ -22,7 +23,7 @@ describe('BitVMVerifier (mock)', () => {
   });
 
   it('proof strings include the source name', async () => {
-    const v = new BitVMVerifier();
+    const v = new MockBitVMVerifier();
     const a = await v.generateProof('DLC');
     const b = await v.generateProof('Ark');
     assert.ok(a.onChainProof?.includes('DLC'));
@@ -30,7 +31,7 @@ describe('BitVMVerifier (mock)', () => {
   });
 
   it('isValidYieldProof rejects null proof or zero yield', () => {
-    const v = new BitVMVerifier();
+    const v = new MockBitVMVerifier();
     assert.equal(
       v.isValidYieldProof({ source: 'x', yieldSats: 0, onChainProof: 'p', valid: true }),
       false
@@ -43,6 +44,17 @@ describe('BitVMVerifier (mock)', () => {
       v.isValidYieldProof({ source: 'x', yieldSats: 10, onChainProof: 'p', valid: false }),
       false
     );
+  });
+
+  it('is injectable as YieldProofVerifier into rotator', async () => {
+    const mock: YieldProofVerifier = new MockBitVMVerifier();
+    const rot = new YieldRotatorV0_6(mock);
+    const result = await rot.rotateAndRoute({});
+    assert.ok(result.yieldAmount > 0);
+  });
+
+  it('deprecated BitVMVerifier alias still constructs', () => {
+    assert.ok(new BitVMVerifier() instanceof MockBitVMVerifier);
   });
 });
 
@@ -92,5 +104,21 @@ describe('YieldRotatorV0_6 (prototype)', () => {
     assert.equal(state.liquidityBuffer, 0);
     const result2 = await anyRot.rotateAndRoute(state);
     assert.equal(result2.yieldAmount, 0);
+  });
+
+  it('custom verifier that always fails routes to buffer', async () => {
+    const dead: YieldProofVerifier = {
+      async generateProof(source: string) {
+        return { source, yieldSats: 0, onChainProof: null, valid: false };
+      },
+      isValidYieldProof() {
+        return false;
+      },
+    };
+    const rot = new YieldRotatorV0_6(dead);
+    const state = { liquidityBuffer: 42 };
+    const result = await rot.rotateAndRoute(state);
+    assert.equal(result.source, 'buffer');
+    assert.equal(result.yieldAmount, 42);
   });
 });
