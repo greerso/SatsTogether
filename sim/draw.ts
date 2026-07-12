@@ -33,7 +33,8 @@ export function placeholderMix(input: Bytes32, counter: number): Uint8Array {
 /**
  * Selects winning share indices.
  *
- * @returns min(numWinners, totalShares) distinct indices, each < totalShares.
+ * @returns up to `min(numWinners, totalShares)` distinct indices, each < totalShares.
+ *          May be shorter than target if attempt budget is exhausted.
  *          Empty array if totalShares === 0.
  */
 export function selectWinners(
@@ -49,8 +50,12 @@ export function selectWinners(
   if (totalShares < 0n) {
     throw new Error('totalShares must be >= 0');
   }
-  if (numWinners < 0) {
-    throw new Error('numWinners must be >= 0');
+  const U64_MAX = 0xffff_ffff_ffff_ffffn;
+  if (totalShares > U64_MAX) {
+    throw new Error('totalShares must fit in u64');
+  }
+  if (!Number.isInteger(numWinners) || numWinners < 0 || numWinners > 0xffff_ffff) {
+    throw new Error('numWinners must be an integer in [0, 2^32-1]');
   }
   if (totalShares === 0n) {
     return [];
@@ -61,12 +66,11 @@ export function selectWinners(
     combined[i] = blockHashN[i]! ^ blockHashN1[i]! ^ userSeed[i]!;
   }
 
-  const target = minBigInt(BigInt(numWinners >>> 0), totalShares);
+  const target = minBigInt(BigInt(numWinners), totalShares);
   const winners: bigint[] = [];
   const seen = new Set<string>();
 
   // u64::MAX - (u64::MAX % total_shares) in Rust
-  const U64_MAX = 0xffff_ffff_ffff_ffffn;
   const limit = U64_MAX - (U64_MAX % totalShares);
 
   const maxAttempts = Math.max(10_000, Number(target) * 100);

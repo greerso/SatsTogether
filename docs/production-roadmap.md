@@ -165,7 +165,7 @@ Raise caps, multi-source yield, pods, QF treasury — only after P4 stability pe
 ## Immediate next actions (ordered)
 
 1. **Human-review** `docs/protocol-spec.md` for internal consistency (last P1 exit box).  
-2. Optional: golden-vector test that TS `sim/draw.ts` matches Rust `select_winners` on fixed fixtures.  
+2. Optional: keep golden vectors in lockstep when changing `placeholder_mix` (Rust + TS tests).  
 3. Start **Phase 2** slice design: testnet block-hash → draw inputs (recommended first vertical).  
 4. Defer UI polish and mainnet deploy work until P2+.  
 5. Use hybrid pipeline: Claude for spec/review, Grok for implement (`docs/hybrid-workflow.md`).
