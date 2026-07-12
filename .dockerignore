@@ -1,0 +1,18 @@
+# Coolify / Docker ignore
+.git
+.hybrid
+.remember
+bitvm/target
+**/node_modules
+frontend/node_modules
+*.md
+!package.json
+docs
+governance
+yield-adapters
+frontend
+bitvm
+schema
+scripts
+tests
+.remember
