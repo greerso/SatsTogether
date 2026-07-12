@@ -67,14 +67,27 @@ This is **intended** as a prize-linked savings tool, not a lottery or gambling p
 2. Follow `docs/testnet-guide.md`.
 3. Mainnet deployment (with a 10 BTC TVL cap as a design goal) is **not implemented** — see `scripts/deploy-mainnet.sh`, which refuses to run.
 
+## Hybrid Claude + Grok development
+Claude Code plans/reviews; Grok Build implements. Hermes can orchestrate both.
+
+```bash
+./scripts/hybrid-pipeline.sh status
+./scripts/hybrid-pipeline.sh plan "your goal"
+./scripts/hybrid-pipeline.sh implement
+./scripts/hybrid-pipeline.sh review
+```
+
+See `docs/hybrid-workflow.md` and `CLAUDE.md`.
+
 ## License
 MIT — Fork freely. See `docs/fork-policy.md`.
 
 ## Status
-- **Early prototype / design stage.** Nothing here has been deployed, tested, or audited.
-- Core protocol (BitVM2 draws, yield proofs, covenant vaults) is **not implemented** — `bitvm/`, `yield-adapters/`, and `governance/` are design references, not working code.
+- **Early prototype / design stage.** Nothing here has been deployed or audited.
+- Core protocol (BitVM2 draws, yield proofs, covenant vaults) is **not implemented** — `bitvm/`, `yield-adapters/`, and `governance/` are design references / mocks, not production security boundaries.
 - Frontend is a UI mockup, not a functional client.
-- No automated tests exist yet.
+- **Phase 0 unit tests exist** (Rust draw model + TS governance/yield mocks). `./scripts/smoke-test.sh` runs them. This is **not** testnet/mainnet readiness.
+- **Production path:** `docs/production-roadmap.md` (P0 foundation → P1 spec/sim → P2 testnet slice → P3 audit → P4 capped mainnet → P5 scale).
 - Mainnet deployment and the TVL cap are unimplemented design goals; audits have not happened and are not scheduled.
 
 Built with ❤️ for Bitcoin. No VCs. No premine. Pure decentralization.

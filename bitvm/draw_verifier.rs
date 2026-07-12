@@ -18,6 +18,7 @@
 /// This stands in for the SHA-256 compression that the real BitVM2 circuit
 /// would perform. It is NOT collision-resistant and MUST be replaced by a
 /// real SHA-256 (or equivalent) before this is used for anything of value.
+#[allow(dead_code)] // exercised by select_winners; lib is reference-only today
 fn placeholder_mix(input: [u8; 32], counter: u32) -> [u8; 32] {
     let mut state = input;
     let counter_bytes = counter.to_le_bytes();
@@ -40,6 +41,7 @@ fn placeholder_mix(input: [u8; 32], counter: u32) -> [u8; 32] {
 ///
 /// Returns `min(num_winners, total_shares)` distinct indices, each
 /// `< total_shares`. Returns an empty vec if `total_shares == 0`.
+#[allow(dead_code)] // unit-tested; not yet called from a public production API
 fn select_winners(
     block_hash_n: [u8; 32],
     block_hash_n1: [u8; 32],

@@ -4,7 +4,7 @@
 // PROTOTYPE — yield figures come from the mocked BitVMVerifier (see
 // ../bitvm/verifier); no real yield is sourced, verified, or settled.
 
-import { BitVMVerifier } from '../bitvm/verifier';
+import { BitVMVerifier } from '../bitvm/verifier.ts';
 
 export const VERSION = '0.1.0-prototype';
 

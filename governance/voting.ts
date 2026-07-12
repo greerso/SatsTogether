@@ -7,7 +7,7 @@
 // quadratic voting requires per-identity or paid-cost weighting enforced
 // on the consensus/server side, which this prototype does not implement.
 // This file intentionally does not fake that guarantee.
-import { signMessage, verifyMessage } from './crypto';
+import { signMessage, verifyMessage } from './crypto.ts';
 
 export const VERSION = '0.1.0-prototype';
 
