@@ -62,9 +62,9 @@ describe('sim/draw selectWinners properties', () => {
     c2[0] = (c2[0]! + 1) & 0xff;
     const w1 = selectWinners(a, b, c, 500n, 10);
     const w2 = selectWinners(a, b, c2, 500n, 10);
-    // Extremely unlikely to match fully with this mix; if it does, still OK as soft check
-    const same = w1.length === w2.length && w1.every((v, i) => v === w2[i]);
-    assert.equal(same, false);
+    // Soft property: changed seed should not yield identical full winner lists.
+    // (Collision is theoretically possible with placeholder_mix; fail loudly if so.)
+    assert.notDeepEqual(w1, w2);
   });
 
   it('placeholderMix is deterministic', () => {
@@ -78,6 +78,11 @@ describe('sim/draw selectWinners properties', () => {
   it('numWinners 0 returns empty', () => {
     const [a, b, c] = sampleHashes();
     assert.deepEqual(selectWinners(a, b, c, 100n, 0), []);
+  });
+
+  it('rejects non-32-byte seeds', () => {
+    const [a, b, c] = sampleHashes();
+    assert.throws(() => selectWinners(a.subarray(0, 16), b, c, 10n, 1), /32-byte/);
   });
 });
 
@@ -114,6 +119,29 @@ describe('sim/ledger share accounting', () => {
     assert.equal(ledger.yieldPool + rec.paid, 100n);
   });
 
+  it('draw with no deposits leaves yield untouched', () => {
+    const ledger = new ShareLedger();
+    ledger.accrueYield(77n);
+    const [a, b, c] = sampleHashes();
+    const rec = ledger.draw(a, b, c, 5);
+    assert.deepEqual(rec.winners, []);
+    assert.equal(rec.paid, 0n);
+    assert.equal(ledger.yieldPool, 77n);
+  });
+
+  it('all burned shares: no payout, yield retained', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 1000n);
+    ledger.withdraw('alice');
+    ledger.accrueYield(50n);
+    const [a, b, c] = sampleHashes();
+    // High-water space is 1; any selected index is burned.
+    const rec = ledger.draw(a, b, c, 1);
+    assert.equal(rec.winners.length, 0);
+    assert.equal(rec.paid, 0n);
+    assert.equal(ledger.yieldPool, 50n);
+  });
+
   it('withdraw burns shares so they no longer win', () => {
     const ledger = new ShareLedger();
     ledger.deposit('alice', 1000n); // index 0
@@ -127,6 +155,12 @@ describe('sim/ledger share accounting', () => {
   it('rejects non-multiple deposits', () => {
     const ledger = new ShareLedger();
     assert.throws(() => ledger.deposit('alice', 1500n), /multiple/);
+  });
+
+  it('rejects second open position for same account', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 1000n);
+    assert.throws(() => ledger.deposit('alice', 1000n), /one open position/);
   });
 });
 

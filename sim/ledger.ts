@@ -92,9 +92,7 @@ export class ShareLedger {
     const shareCount = principalSats / this.satsPerShare;
     const startIndex = this.nextShareIndex;
 
-    // Merge into existing position by extending with a new contiguous block.
-    // Sim v1: one position per account; if re-deposit, append a new block by
-    // replacing map entry only when no prior position — else reject overlap.
+    // Sim v1: one contiguous open position per account.
     if (this.positions.has(account)) {
       throw new Error('sim v1: one open position per account (withdraw first)');
     }
@@ -124,11 +122,10 @@ export class ShareLedger {
   }
 
   /**
-   * Run a draw against current live share space.
-   *
-   * Share indices are global (0..nextShareIndex). Withdrawn shares leave holes;
-   * winners that land on burned indices are skipped (not paid). Prize is split
-   * evenly among successful winner slots from the current yield pool.
+   * Run a draw over high-water share indices `[0, nextShareIndex)`.
+   * Burned indices may be selected but are filtered out (no payout).
+   * Prize is split evenly among live winners from the current yield pool;
+   * remainder stays in the pool.
    */
   draw(
     blockHashN: Bytes32,
