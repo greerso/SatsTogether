@@ -39,8 +39,9 @@ fn placeholder_mix(input: [u8; 32], counter: u32) -> [u8; 32] {
 /// derive candidate winners. Rejection sampling removes modulo bias, and
 /// duplicates are skipped so each winner is a distinct share index.
 ///
-/// Returns `min(num_winners, total_shares)` distinct indices, each
-/// `< total_shares`. Returns an empty vec if `total_shares == 0`.
+/// Returns **up to** `min(num_winners, total_shares)` distinct indices, each
+/// `< total_shares`. May be shorter than the target if the attempt budget is
+/// exhausted. Returns an empty vec if `total_shares == 0`.
 #[allow(dead_code)] // unit-tested; not yet called from a public production API
 fn select_winners(
     block_hash_n: [u8; 32],
@@ -157,5 +158,28 @@ mod tests {
         for w in &winners {
             assert!(*w < total_shares);
         }
+    }
+
+    /// Locked golden vector shared with `tests/sim.test.ts` (TS port of this model).
+    /// Update both sides together if the mix algorithm changes.
+    #[test]
+    fn golden_vector_matches_ts_port() {
+        let (a, b, c) = sample_hashes();
+        assert_eq!(select_winners(a, b, c, 5, 50), vec![1, 2, 4, 0, 3]);
+        assert_eq!(
+            select_winners(a, b, c, 1000, 20),
+            vec![
+                846, 252, 394, 800, 695, 101, 243, 649, 534, 940, 82, 488, 487, 157, 563, 705, 854,
+                996, 402, 544
+            ]
+        );
+        let mix0 = placeholder_mix(a, 0);
+        assert_eq!(
+            mix0.to_vec(),
+            vec![
+                0, 125, 243, 214, 139, 227, 91, 180, 235, 177, 105, 161, 17, 196, 107, 72, 151, 225,
+                215, 64, 34, 2, 188, 89, 150, 249, 147, 185, 212, 19, 11, 3
+            ]
+        );
     }
 }

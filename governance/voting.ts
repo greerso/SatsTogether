@@ -33,7 +33,10 @@ export async function castVote(
   pubkey: string,
   signer: Signer = defaultMockSigner,
 ): Promise<Vote> {
-  const weight = Math.sqrt(votes); // Quadratic weight
+  if (!(votes >= 0) || !Number.isFinite(votes)) {
+    throw new Error('votes must be a non-negative finite number');
+  }
+  const weight = Math.sqrt(votes); // Quadratic weight (float; production needs fixed-point)
   const signature = await signer.signMessage(`Vote:${source}:${weight}`, privKey);
   return { source, weight, signature, pubkey };
 }

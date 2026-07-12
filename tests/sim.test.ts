@@ -84,6 +84,33 @@ describe('sim/draw selectWinners properties', () => {
     const [a, b, c] = sampleHashes();
     assert.throws(() => selectWinners(a.subarray(0, 16), b, c, 10n, 1), /32-byte/);
   });
+
+  it('rejects non-integer numWinners', () => {
+    const [a, b, c] = sampleHashes();
+    assert.throws(() => selectWinners(a, b, c, 10n, 1.5), /integer/);
+  });
+
+  it('golden vectors lock Rust↔TS alignment', () => {
+    const [a, b, c] = sampleHashes();
+    assert.deepEqual(
+      selectWinners(a, b, c, 5n, 50).map(Number),
+      [1, 2, 4, 0, 3],
+    );
+    assert.deepEqual(
+      selectWinners(a, b, c, 1000n, 20).map(Number),
+      [
+        846, 252, 394, 800, 695, 101, 243, 649, 534, 940, 82, 488, 487, 157, 563, 705, 854, 996,
+        402, 544,
+      ],
+    );
+    assert.deepEqual(
+      [...placeholderMix(a, 0)],
+      [
+        0, 125, 243, 214, 139, 227, 91, 180, 235, 177, 105, 161, 17, 196, 107, 72, 151, 225, 215,
+        64, 34, 2, 188, 89, 150, 249, 147, 185, 212, 19, 11, 3,
+      ],
+    );
+  });
 });
 
 describe('sim/ledger share accounting', () => {
@@ -109,14 +136,14 @@ describe('sim/ledger share accounting', () => {
     assert.equal(ledger.totalPrincipalSats, 0n);
   });
 
-  it('draw never pays more than yield pool', () => {
+  it('draw never allocates more than yield pool', () => {
     const ledger = new ShareLedger();
     ledger.deposit('alice', 10_000n);
     ledger.accrueYield(100n);
     const [a, b, c] = sampleHashes();
     const rec = ledger.draw(a, b, c, 3);
-    assert.ok(rec.paid <= 100n);
-    assert.equal(ledger.yieldPool + rec.paid, 100n);
+    assert.ok(rec.allocated <= 100n);
+    assert.equal(ledger.yieldPool + rec.allocated, 100n);
   });
 
   it('draw with no deposits leaves yield untouched', () => {
@@ -125,11 +152,11 @@ describe('sim/ledger share accounting', () => {
     const [a, b, c] = sampleHashes();
     const rec = ledger.draw(a, b, c, 5);
     assert.deepEqual(rec.winners, []);
-    assert.equal(rec.paid, 0n);
+    assert.equal(rec.allocated, 0n);
     assert.equal(ledger.yieldPool, 77n);
   });
 
-  it('all burned shares: no payout, yield retained', () => {
+  it('all burned shares: no allocation, yield retained', () => {
     const ledger = new ShareLedger();
     ledger.deposit('alice', 1000n);
     ledger.withdraw('alice');
@@ -138,8 +165,31 @@ describe('sim/ledger share accounting', () => {
     // High-water space is 1; any selected index is burned.
     const rec = ledger.draw(a, b, c, 1);
     assert.equal(rec.winners.length, 0);
-    assert.equal(rec.paid, 0n);
+    assert.equal(rec.allocated, 0n);
     assert.equal(ledger.yieldPool, 50n);
+  });
+
+  it('partial burn: only live winners share full pool', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 1000n); // index 0
+    ledger.deposit('bob', 1000n); // index 1
+    ledger.withdraw('alice');
+    ledger.accrueYield(100n);
+    const [a, b, c] = sampleHashes();
+    // space=2; sample golden for space 5 includes 1 — force numWinners high enough
+    // that both 0 and 1 can appear; live filter keeps only bob (index 1).
+    const rec = ledger.draw(a, b, c, 2);
+    for (const w of rec.winners) {
+      assert.equal(ledger.ownerOf(w), 'bob');
+    }
+    if (rec.winners.length > 0) {
+      assert.equal(rec.prizePerWinner * BigInt(rec.winners.length), rec.allocated);
+      assert.equal(ledger.yieldPool + rec.allocated, 100n);
+      // Entire pool split among live winners only (burned get nothing).
+      assert.equal(rec.prizePerWinner, 100n / BigInt(rec.winners.length));
+    } else {
+      assert.equal(ledger.yieldPool, 100n);
+    }
   });
 
   it('withdraw burns shares so they no longer win', () => {

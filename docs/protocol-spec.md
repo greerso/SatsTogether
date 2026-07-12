@@ -136,21 +136,21 @@ Production: amount must come from `YieldProofVerifier.isValidYieldProof` + settl
 
 1. If space == 0 → return `[]`.
 2. `combined[i] = block_hash_n[i] XOR block_hash_n1[i] XOR user_seed[i]`.
-3. `target = min(num_winners, space)`.
+3. `target = min(num_winners, space)` (requested max).
 4. Expand with `placeholder_mix(combined, counter)` (NOT SHA-256).
 5. Take first 8 bytes as little-endian u64 candidate.
 6. Rejection sampling: discard if `candidate >= limit` where  
    `limit = u64::MAX - (u64::MAX % space)` to remove modulo bias.
 7. `index = candidate % space`; skip if already selected.
-8. Cap attempts; return distinct indices in selection order.
+8. Cap attempts; return **up to** `target` distinct indices (may be shorter if budget exhausted).
 
-**Prize settlement (sim)**
+**Prize allocation (sim — not delivery)**
 
 - Filter winners to indices that still have an owner (skip burned).
 - `prizePerWinner = floor(yieldPool / liveWinnerCount)` (0 if none).
-- `paid = prizePerWinner * liveWinnerCount`.
-- `yieldPool -= paid`.
-- Record `DrawRecord`.
+- `allocated = prizePerWinner * liveWinnerCount` (removed from pool into `DrawRecord` audit sink).
+- `yieldPool -= allocated` (remainder `yieldPool % liveCount` stays).
+- Record `DrawRecord`. **No per-account claim balance yet** — allocated ≠ paid to user.
 
 **Production requirements (not met)**
 
@@ -163,8 +163,8 @@ Production: amount must come from `YieldProofVerifier.isValidYieldProof` + settl
 ### 3.4 Claim prize
 
 - Design: winners receive **yield sats only**, never principal.
-- Sim: prizes are accounted in `DrawRecord`; per-account claim balance is future work.
-- Invariant: sum of prizes paid ≤ yield verified for that epoch (+ documented buffer policy).
+- Sim: `DrawRecord.allocated` is an epoch audit sink only; per-account claim balances are future work.
+- Invariant: sum of yield allocated from pool ≤ yield available that epoch (+ documented buffer policy).
 
 ### 3.5 Withdraw principal
 
@@ -254,7 +254,7 @@ Quadratic weighting is **not sybil-resistant** under multi-key. See `governance/
 Must hold in any real implementation and are checked in sim tests where applicable:
 
 1. **Principal independence** — withdraw principal without depending on draw outcomes.  
-2. **Prize budget** — paid prizes ≤ available verified yield (+ explicit buffer policy).  
+2. **Prize budget** — allocated draw amounts ≤ available verified yield (+ explicit buffer policy).  
 3. **No admin seize** — no central operator key can seize principal (design; no vault yet).  
 4. **Draw binding** — inputs fixed before outcome; verifiable after (design; offline model only today).  
 5. **Share uniqueness in draw** — a single draw never returns duplicate indices.  

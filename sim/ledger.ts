@@ -2,13 +2,14 @@
  * SatsTogether off-chain share ledger (Phase 1 simulator).
  *
  * Deterministic accounting for deposits → share indices, yield accrual,
- * prize claims, and principal withdraws. No chain, no custody, no real BTC.
+ * draw allocation records, and principal withdraws. No chain, no custody, no real BTC.
  *
  * Share model (sim only):
  * - 1 share unit = SATS_PER_SHARE sats of principal (default 1000).
  * - Deposit mints contiguous share indices [nextIndex, nextIndex+n).
- * - Withdraw burns shares and returns principal; unclaimed prizes are forfeited
- *   in this sim (production policy TBD — see protocol-spec).
+ * - Withdraw burns shares and returns principal.
+ * - Draw records allocate yield from the pool into DrawRecord (audit sink only);
+ *   per-account claim balances are not implemented yet.
  */
 
 import { selectWinners, type Bytes32 } from './draw.ts';
@@ -30,9 +31,15 @@ export interface Position {
 export interface DrawRecord {
   epoch: number;
   winners: bigint[];
+  /** Per live winner share of the pool this epoch (floor division). */
   prizePerWinner: bigint;
+  /** Yield pool size before allocation. */
   yieldAvailable: bigint;
-  paid: bigint;
+  /**
+   * Sats removed from the yield pool for this draw (prizePerWinner * winners).
+   * Not delivered to accounts yet — sim audit sink only (claim balances = future work).
+   */
+  allocated: bigint;
 }
 
 export interface LedgerSnapshot {
@@ -123,9 +130,10 @@ export class ShareLedger {
 
   /**
    * Run a draw over high-water share indices `[0, nextShareIndex)`.
-   * Burned indices may be selected but are filtered out (no payout).
-   * Prize is split evenly among live winners from the current yield pool;
-   * remainder stays in the pool.
+   * Burned indices may be selected but are filtered out (no allocation).
+   * Allocated sats leave the yield pool into DrawRecord only (not credited to accounts).
+   * Remainder (yieldPool % liveCount) stays in the pool.
+   * Known sim policy: high-water + skip-burned can concentrate prizes under churn.
    */
   draw(
     blockHashN: Bytes32,
@@ -133,7 +141,7 @@ export class ShareLedger {
     userSeed: Bytes32,
     numWinners: number,
   ): DrawRecord {
-    // High-water index space keeps historical indices stable; burned holes pay nothing.
+    // High-water index space keeps historical indices stable; burned holes allocate nothing.
     const space = this.nextShareIndex;
     const raw = selectWinners(blockHashN, blockHashN1, userSeed, space, numWinners);
     const liveWinners = raw.filter(idx => this.ownerByIndex.has(idx.toString()));
@@ -141,8 +149,8 @@ export class ShareLedger {
     const prizePool = this.yieldPoolSats;
     const n = BigInt(liveWinners.length);
     const prizePerWinner = n === 0n ? 0n : prizePool / n;
-    const paid = prizePerWinner * n;
-    this.yieldPoolSats -= paid;
+    const allocated = prizePerWinner * n;
+    this.yieldPoolSats -= allocated;
 
     this.epoch += 1;
     const rec: DrawRecord = {
@@ -150,7 +158,7 @@ export class ShareLedger {
       winners: liveWinners,
       prizePerWinner,
       yieldAvailable: prizePool,
-      paid,
+      allocated,
     };
     this.draws.push(rec);
     return { ...rec, winners: [...liveWinners] };
@@ -163,7 +171,8 @@ export class ShareLedger {
 
   /**
    * Withdraw full position: return principal, burn shares.
-   * Yield already paid out is not clawed back; remaining yield stays in pool.
+   * Draw allocations are epoch records only; withdraw does not touch them.
+   * Remaining yield stays in the pool.
    */
   withdraw(account: AccountId): { principalSats: bigint } {
     const pos = this.positions.get(account);
