@@ -2,6 +2,7 @@
 node_modules/
 dist/
 build/
+bitvm/target/
 
 # Environment & keys
 .env

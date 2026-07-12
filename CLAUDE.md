@@ -47,15 +47,17 @@ Hermes skill: `claude-grok-pipeline`
 ## Useful checks
 
 ```bash
-# Frontend (when deps installed)
-cd frontend && npm test 2>/dev/null || npm run lint 2>/dev/null || true
+# Phase 0 smoke (Rust + TS unit tests)
+./scripts/smoke-test.sh
 
-# Rust sketch
-cd bitvm && cargo check 2>/dev/null || true
-
-# Smoke
-./scripts/smoke-test.sh 2>/dev/null || true
+# Or separately:
+cd bitvm && cargo test
+npm test   # from repo root
 ```
+
+## Production path
+
+See `docs/production-roadmap.md`. We are completing **Phase 0** (honest foundation + unit tests). Production/mainnet is P4+ only after spec, testnet slice, and audit gates.
 
 ## Related docs
 
