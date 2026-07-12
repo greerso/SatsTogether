@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SatsTogether — Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <!-- ══ LOUD PERSISTENT HONESTY BANNER ══ -->
+  <div class="honesty">
+    <span class="dot"></span>
+    <span><b>PROTOTYPE — design mockup.</b> Not mainnet · not audited · no real funds · no BTC custody.</span>
+    <span class="sep">·</span>
+    <span>Ephemeral in-memory session. Draws use <b>testnet/signet</b> block hashes only.</span>
+  </div>
+
+  <main class="shell">
+    <!-- ══ BRAND + WELCOME (screen 01) ══ -->
+    <div class="brand">
+      <div class="logo disp">₿</div>
+      <span class="name disp">SatsTogether</span>
+    </div>
+    <h1 class="hero-title disp">Save Bitcoin. Win Bitcoin.<br />Never lose it.</h1>
+    <p class="lede">A prize-linked savings flow for a no-loss Bitcoin protocol. Your principal is always
+      100% yours — only the yield funds the weekly prize pool. Deposit sats, mint SatsShares, and run
+      a provably-fair draw off real testnet block hashes.</p>
+
+    <!-- ══ PRIZE POOL HERO (screens 03 / 04 / 07) ══ -->
+    <div class="hero">
+      <div class="between">
+        <span class="cap">THIS WEEK'S PRIZE POOL <span class="illus">illustrative</span></span>
+        <span class="badge">12 winners</span>
+      </div>
+      <div class="big disp">₿0.84</div>
+      <div class="sub">≈ $92,400 · split across 12 winners</div>
+      <div class="count">
+        <div class="u"><b class="disp">02</b><span>DAYS</span></div>
+        <div class="u"><b class="disp">14</b><span>HRS</span></div>
+        <div class="u"><b class="disp">06</b><span>MIN</span></div>
+        <div class="u"><b class="disp">—</b><span>NEXT DRAW</span></div>
+      </div>
+    </div>
+
+    <!-- ══ LIVE SESSION STATS (real — screen 03 Home) ══ -->
+    <div class="section-label">YOUR SESSION · LIVE LEDGER</div>
+    <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="card">
+        <div class="kicker">YOUR SAVINGS</div>
+        <div class="stat-num disp" style="font-size:26px" id="stat-principal">—</div>
+        <div style="font-size:13px;color:var(--muted)" id="stat-shares">0 shares</div>
+        <div class="pill-teal"><span class="d"></span>No-loss — principal protected</div>
+      </div>
+      <div class="card">
+        <div class="kicker">SESSION YIELD POOL</div>
+        <div class="stat-num disp" style="font-size:26px;color:var(--btc-4)" id="stat-pool">—</div>
+        <div style="font-size:13px;color:var(--muted)">funds the prizes</div>
+      </div>
+      <div class="card">
+        <div class="kicker">WIN ODDS <span class="illus">est.</span></div>
+        <div class="stat-num disp" style="font-size:26px;color:var(--btc-4)" id="stat-odds">—</div>
+        <div style="font-size:13px;color:var(--muted)">of session shares</div>
+      </div>
+      <div class="card">
+        <div class="kicker">EPOCH</div>
+        <div class="stat-num disp" style="font-size:26px" id="stat-epoch">0</div>
+        <div style="font-size:13px;color:var(--muted)">draws run this session</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px">
+      <button type="button" class="btn ghost" style="margin-top:0;width:auto;padding:10px 16px" id="btn-refresh">Refresh</button>
+      <button type="button" class="btn ghost" style="margin-top:0;width:auto;padding:10px 16px" id="btn-reset">Reset session</button>
+    </div>
+
+    <div class="cols" style="margin-top:24px">
+      <!-- ── LEFT COLUMN ── -->
+      <div class="grid">
+        <!-- DEPOSIT (screen 02) -->
+        <div class="card">
+          <div class="between">
+            <h2 class="disp" style="margin:0;font-size:26px;letter-spacing:-.7px">Add Bitcoin</h2>
+            <span class="pill-teal" style="margin-top:0">Step 1 of 2</span>
+          </div>
+          <p style="margin:6px 0 16px;font-size:14px;color:var(--muted)">Every 1,000 sats mints one SatsShare — your ticket to the weekly draw.</p>
+          <div class="amount">
+            <div class="lab">DEPOSIT AMOUNT (sats)</div>
+            <div class="field-row">
+              <label>Account id <input id="dep-account" value="alice" /></label>
+              <label>Principal sats (×1000) <input id="dep-sats" type="number" min="1000" step="1000" value="2500000" /></label>
+            </div>
+            <div class="hr"></div>
+            <div class="between">
+              <span style="font-size:14px;color:var(--muted)">You'll receive</span>
+              <span class="chip" id="dep-shares-preview">2,500 SatsShares</span>
+            </div>
+          </div>
+          <div class="note teal">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.3-2.9 7.6-7 8.8C7.9 18.6 5 15.3 5 11V6l7-3z" stroke="#0E9E8E" stroke-width="2" stroke-linejoin="round"/><path d="M9 11.5l2 2 4-4" stroke="#0E9E8E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span><b>No-loss guarantee.</b> Withdraw your full principal whenever you like. Only yield feeds the prizes.</span>
+          </div>
+          <button type="button" class="btn" id="btn-deposit">
+            <svg width="15" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M13 2L3 14h7l-1 8L21 10h-7l-1-8z"/></svg>
+            Deposit via Lightning (sim)
+          </button>
+        </div>
+
+        <!-- ACCRUE YIELD (screen 02 odds → pool) -->
+        <div class="card">
+          <h2 class="disp" style="margin:0 0 4px;font-size:22px;letter-spacing:-.5px">Accrue yield</h2>
+          <p style="margin:0 0 6px;font-size:14px;color:var(--muted)">Mock verified yield into the prize pool. Production would require the <span class="mono">YieldProofVerifier</span>.</p>
+          <label>Yield sats <input id="acc-sats" type="number" min="0" value="1000" /></label>
+          <button type="button" class="btn" id="btn-accrue">Accrue yield into pool</button>
+        </div>
+
+        <!-- RECENT DRAWS (real — screen 07 desktop) -->
+        <div class="card">
+          <div class="between" style="margin-bottom:6px">
+            <div class="disp" style="font-size:17px;font-weight:700">Recent draws <span class="illus">this session</span></div>
+          </div>
+          <div id="draws" style="color:var(--muted);font-size:14px">No draws yet</div>
+        </div>
+      </div>
+
+      <!-- ── RIGHT COLUMN ── -->
+      <div class="grid">
+        <!-- STREAK (screen 03, illustrative) -->
+        <div class="card">
+          <div class="between">
+            <div class="disp" style="font-size:18px;font-weight:700">42-day streak</div>
+            <span class="illus">illustrative</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted)">3 days to your next badge</div>
+          <div class="streak-bar"><i style="width:82%"></i></div>
+        </div>
+
+        <!-- YIELD APY (screen 07, illustrative) -->
+        <div class="card">
+          <div class="kicker">YIELD APY <span class="illus">illustrative</span></div>
+          <div class="stat-num disp" style="font-size:28px">4.1%</div>
+          <div style="font-size:12.5px;color:var(--muted)">funds the pool</div>
+        </div>
+
+        <!-- POD (screen 05, illustrative) -->
+        <div class="pod">
+          <div class="between">
+            <span style="font-size:12px;font-weight:700;letter-spacing:.6px;color:rgba(255,255,255,.85)">YOUR POD <span class="illus" style="color:#0B7F72;background:rgba(255,255,255,.75)">illustrative</span></span>
+            <span class="badge">8 members</span>
+          </div>
+          <div class="disp" style="font-size:22px;font-weight:800;margin-top:8px">Diamond Hands</div>
+          <div class="avatars">
+            <div class="a" style="background:#FFB84D">S</div>
+            <div class="a" style="background:#FFCE8A">M</div>
+            <div class="a" style="background:#FFE0B0">J</div>
+            <div class="a" style="background:#F4552E;color:#fff">K</div>
+            <div class="a" style="background:rgba(255,255,255,.25);color:#fff;font-size:11px">+4</div>
+          </div>
+          <div class="row">
+            <div><div class="k">Combined</div><div class="v disp">41,200</div></div>
+            <div><div class="k">Pooled odds</div><div class="v disp">12.4%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ WEEKLY DRAW (screen 04 — dark, WIRED to testnet) ══ -->
+    <div class="section-label">WEEKLY DRAW · PROVABLY FAIR</div>
+    <div class="draw">
+      <div style="text-align:center">
+        <span class="live"><span class="d"></span>WEEKLY DRAW · TESTNET · LIVE SOON</span>
+      </div>
+      <div style="text-align:center;margin-top:24px">
+        <div style="font-size:14px;color:rgba(255,255,255,.55)">Session yield pool</div>
+        <div class="pool-n disp" id="draw-pool">0 sats</div>
+        <div style="font-size:14px;color:#FFB84D;font-weight:600;margin-top:6px">Winners drawn from the pool by share index</div>
+      </div>
+
+      <div class="field-row" style="margin-top:24px">
+        <label>Network
+          <select id="network">
+            <option value="testnet" selected>testnet</option>
+            <option value="signet">signet</option>
+          </select>
+        </label>
+        <label>Num winners <input id="winners" type="number" min="0" value="3" /></label>
+      </div>
+      <label style="color:rgba(255,255,255,.6)">User seed (hex64 or demo string) <input id="seed" value="satstogether-web-demo" /></label>
+
+      <div class="fair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.3-2.9 7.6-7 8.8C7.9 18.6 5 15.3 5 11V6l7-3z" stroke="#FFB84D" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <span>Winners drawn from live Bitcoin <b>testnet</b> block hashes (tip-1 + tip) mixed with your seed — provably fair, no operator.</span>
+      </div>
+
+      <button type="button" class="btn" id="btn-draw">Draw from chain</button>
+    </div>
+
+    <!-- ══ WITHDRAW (screen 06 — teal, WIRED) ══ -->
+    <div class="section-label">WITHDRAW · NO-LOSS</div>
+    <div class="card" style="border:none;padding:0;overflow:hidden;border-radius:24px">
+      <div style="background:var(--teal-grad);padding:24px 26px;color:#fff">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85)">AVAILABLE TO WITHDRAW <span class="illus" style="color:#0B7F72;background:rgba(255,255,255,.8)">full principal</span></div>
+        <div class="disp" style="font-size:44px;font-weight:800;letter-spacing:-1.5px;line-height:1;margin-top:8px" id="wd-available">0 sats</div>
+        <div style="font-size:14px;color:rgba(255,255,255,.9);margin-top:4px">100% of your principal — instant over Lightning (sim)</div>
+      </div>
+      <div style="padding:20px 26px 24px;background:#fff">
+        <label>Account id <input id="wd-account" value="alice" /></label>
+        <div class="note warn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#F4552E" stroke-width="2"/><path d="M12 7v6M12 16.5v.5" stroke="#F4552E" stroke-width="2" stroke-linecap="round"/></svg>
+          <span>Withdrawing your full balance removes you from this week's draw.</span>
+        </div>
+        <button type="button" class="btn ink" id="btn-withdraw">Withdraw all principal</button>
+      </div>
+    </div>
+
+    <!-- ══ LOG ══ -->
+    <div class="section-label">ACTIVITY LOG</div>
+    <div id="log">Ready.</div>
+
+    <p class="footer-links">
+      API: <a href="/health">/health</a> · <a href="/api/status">/api/status</a> ·
+      <a href="/api/session">/api/session</a> ·
+      <a href="https://github.com/greerso/SatsTogether">GitHub</a>
+    </p>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
