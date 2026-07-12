@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "SatsTogether",
+    "slug": "satstogether",
+    "version": "0.1.0-prototype",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic"
+  }
+}
