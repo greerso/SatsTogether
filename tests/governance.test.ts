@@ -90,4 +90,17 @@ describe('governance voting (prototype, not sybil-resistant)', () => {
     assert.equal(r.winner, 'DLC');
     assert.equal(r.tally['Ark'], undefined);
   });
+
+  it('first valid vote wins after earlier invalid from same pubkey', async () => {
+    const bad = {
+      source: 'Ark',
+      weight: 99,
+      signature: 'mock-sig:deadbeef',
+      pubkey: 'alice',
+    };
+    const good = await castVote('DLC', 4, 'alice', 'alice');
+    const r = tallyVotes([bad, good]);
+    assert.equal(r.winner, 'DLC');
+    assert.equal(r.tally['DLC'], 2);
+  });
 });

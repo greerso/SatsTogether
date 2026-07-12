@@ -67,13 +67,15 @@ Code map:
 
 - Accrued prize budget in sats.
 - Increased by `accrueYield` (sim) / future verified proofs.
-- Decreased only by prize payouts (and explicit buffer policy in rotator, separate from share ledger).
+- Decreased only by **prize allocation** into `DrawRecord` (audit sink; not user delivery yet).
+- Rotator liquidity buffer is separate accounting (see §2.4), not the share-ledger yield pool.
 
 ### 2.4 Liquidity buffer (rotator)
 
 - Optional shortfall buffer tracked by `YieldRotatorV0_6` pool state.
 - Drawn down only when **all** configured yield sources fail validity checks.
 - Not principal; not share-backed.
+- **Not part of share-ledger invariant #2.** Rotator buffer is a separate mock path; prize-budget invariant applies to verified yield / ledger `yieldPool` only until a joint policy is specified.
 
 ---
 
@@ -146,7 +148,8 @@ Production: amount must come from `YieldProofVerifier.isValidYieldProof` + settl
 
 **Prize allocation (sim — not delivery)**
 
-- Filter winners to indices that still have an owner (skip burned).
+- Filter winners to indices that still have an owner (skip burned). **No re-sample:** burned slots are wasted; live winner count may be `< min(num_winners, live_shares)`.
+- High-water draw + skip-burned can **concentrate** remaining pool among fewer live winners under churn (known sim policy).
 - `prizePerWinner = floor(yieldPool / liveWinnerCount)` (0 if none).
 - `allocated = prizePerWinner * liveWinnerCount` (removed from pool into `DrawRecord` audit sink).
 - `yieldPool -= allocated` (remainder `yieldPool % liveCount` stays).
@@ -164,7 +167,7 @@ Production: amount must come from `YieldProofVerifier.isValidYieldProof` + settl
 
 - Design: winners receive **yield sats only**, never principal.
 - Sim: `DrawRecord.allocated` is an epoch audit sink only; per-account claim balances are future work.
-- Invariant: sum of yield allocated from pool ≤ yield available that epoch (+ documented buffer policy).
+- Invariant: sum of yield allocated from the share-ledger pool ≤ that epoch's yield pool before allocation (rotator buffer is out of scope for this bound; §2.4).
 
 ### 3.5 Withdraw principal
 
@@ -234,18 +237,22 @@ interface YieldProofVerifier {
 Vote:{source}:{weight}
 ```
 
-where `weight = sqrt(votes)` (IEEE floating; prototype only — production should use fixed-point).
+where `castVote` sets `weight = sqrt(votes)` (IEEE floating; prototype only — production should use fixed-point).
+
+**Prototype gap:** tally does **not** recompute `sqrt(votes)` and does **not** bind a `votes` field. The signed payload carries only `weight`. Anyone who can produce a valid signature for a pubkey (under MockSigner: anyone who knows the key string) can assert an arbitrary `weight`. Quadratic form is a **client convention**, not an enforced tally invariant.
 
 ### 5.2 Tally rules
 
 1. Skip invalid signatures (`Signer.verifyMessage`).
-2. At most **one vote per pubkey** (first wins).
-3. Sum weights per `source`.
-4. Winner = source with maximum weight (ties: reduce picks last-seen max — document: unstable ties; production should break ties deterministically e.g. lexicographic source id).
+2. At most **one vote per pubkey** — first **valid** (verifying) vote wins; invalid earlier votes do not burn the slot.
+3. Sum asserted `weight` values per `source` (no re-derivation from votes).
+4. Winner = source with maximum weight (ties: reduce picks last-seen max — unstable; production should break ties deterministically e.g. lexicographic source id).
 
-### 5.3 Explicit non-claim
+### 5.3 Explicit non-claims
 
-Quadratic weighting is **not sybil-resistant** under multi-key. See `governance/voting.ts` header and `docs/threat-model.md`.
+- Not **sybil-resistant** under multi-key (N keys → N votes).
+- Not **weight-integrity** under mock/self-signed weights (single key can assert unbounded weight).
+- See `governance/voting.ts` header and `docs/threat-model.md`.
 
 ---
 
@@ -254,7 +261,7 @@ Quadratic weighting is **not sybil-resistant** under multi-key. See `governance/
 Must hold in any real implementation and are checked in sim tests where applicable:
 
 1. **Principal independence** — withdraw principal without depending on draw outcomes.  
-2. **Prize budget** — allocated draw amounts ≤ available verified yield (+ explicit buffer policy).  
+2. **Prize budget** — for a share-ledger draw epoch, `allocated ≤ yieldPool` before allocation (rotator buffer is separate; §2.4).  
 3. **No admin seize** — no central operator key can seize principal (design; no vault yet).  
 4. **Draw binding** — inputs fixed before outcome; verifiable after (design; offline model only today).  
 5. **Share uniqueness in draw** — a single draw never returns duplicate indices.  
@@ -269,10 +276,18 @@ Must hold in any real implementation and are checked in sim tests where applicab
 | Code / condition | Where | Handling |
 |------------------|-------|----------|
 | zero share space | draw | empty winners |
-| num_winners > space | draw | cap at space |
-| non-multiple deposit | ledger | throw |
+| num_winners > space | draw | cap target at space |
+| non-32-byte hash/seed | draw | throw |
+| non-integer / out-of-range numWinners | draw | throw |
+| totalShares > u64 | draw | throw |
+| empty account | deposit | throw |
+| principalSats ≤ 0 | deposit | throw |
+| non-multiple deposit | deposit | throw |
+| second open position (sim v1) | deposit | throw |
+| amountSats < 0 | accrueYield | throw |
 | no position | withdraw | throw |
 | invalid mock sig | tally | skip vote |
+| duplicate pubkey (after a valid vote) | tally | skip later votes |
 | all sources invalid | rotator | buffer path |
 
 ---
@@ -282,9 +297,11 @@ Must hold in any real implementation and are checked in sim tests where applicab
 - Exact vault construction (CTV/CAT vs BitVM-only).  
 - Yield source whitelist and real proof formats.  
 - Pod custody and exit.  
-- Fixed-point vs float for QV weights.  
+- Fixed-point vs float for QV weights; binding `votes` in the signed message so tally can recompute weight.  
 - Prize claim UX (push vs pull) and tax lots.  
 - Tie-breaking for governance and multi-winner prize remainders (`yieldPool % n` stays in pool — intentional).  
+- Whether to re-sample draw slots that land on burned indices (today: waste slots / concentrate prizes).  
+- Joint yield + rotator-buffer accounting for production prize budget.  
 - Regulatory classification per jurisdiction (`docs/legal-framing.md`).
 
 ---
@@ -295,5 +312,6 @@ Must hold in any real implementation and are checked in sim tests where applicab
 |---------|------|-------|
 | 0.1.0-draft | 2026-07-12 | Outline |
 | 0.2.0-draft | 2026-07-12 | Implementation-ready: lifecycle, interfaces, sim map, invariants |
+| 0.2.1-draft | 2026-07-12 | Opus critical-assessment fixes: QV weight honesty, first-valid, burn concentration, error catalog |
 
 Human review still required for Phase 1 exit criterion “spec reviewed (human) for internal consistency.”
