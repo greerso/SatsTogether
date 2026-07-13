@@ -5,7 +5,8 @@ bounty is funded. This package exists so a future auditor/reviewer can see
 exactly what is real vs design vs mock.
 
 Related: `docs/audit-checklist.md`, `docs/bitvm-challenge-game.md`, `docs/bug-bounty-scope.md`,
-`docs/ops-emergency-policy.md`, `docs/protocol-spec.md`, `docs/threat-model.md`.
+`docs/ops-emergency-policy.md`, `docs/auditor-outreach.md`, `SECURITY.md`, `docs/protocol-spec.md`,
+`docs/threat-model.md`.
 
 ---
 
@@ -62,8 +63,15 @@ npm run web   # http://localhost:3000
 
 Live: https://satstogether.greerso.com (ephemeral; not a security boundary).
 
-## 6. Non-goals until P3 exit criteria are real
+## 7. How to engage reviewers
 
-- Marketing “audited” or “no-loss guaranteed”  
-- Mainnet TVL  
-- Claiming BitVM2 security for `placeholder_mix`  
+1. Use `docs/auditor-outreach.md` (email template + fact sheet).  
+2. Point them at this file + `SECURITY.md`.  
+3. Freeze a git tag for the engagement when SOW is signed.
+
+## 8. Document control
+
+| Version | Date | Notes |
+|---------|------|-------|
+| 0.1.0 | 2026-07-12 | First Phase 3 prep package |
+| 0.1.1 | 2026-07-12 | Linked auditor outreach + SECURITY.md |  

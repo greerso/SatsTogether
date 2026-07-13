@@ -91,7 +91,7 @@ MIT — Fork freely. See `docs/fork-policy.md`.
 - **Phase 0–2 complete**; hosted prototype at Coolify with testnet draws. **Phase 3 prep** (audit packaging) in progress. Still **not** mainnet-ready / not audited.
 - **Production path:** `docs/production-roadmap.md` (P0 → P1 → P2 → **P3** → P4 capped mainnet → P5 scale).
 - **Hosted prototype:** https://satstogether.greerso.com — interactive sim ledger + testnet draw. See `docs/coolify.md`.
-- **Security prep:** `docs/phase-3-audit-package.md`, `docs/bitvm-challenge-game.md`, `docs/bug-bounty-scope.md`.
+- **Security prep:** `docs/phase-3-audit-package.md`, `docs/auditor-outreach.md`, `docs/bitvm-challenge-game.md`, `SECURITY.md`.
 - Mainnet deployment and the TVL cap are unimplemented design goals; audits have not happened and are not scheduled.
 
 Built with ❤️ for Bitcoin. No VCs. No premine. Pure decentralization.
