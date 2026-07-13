@@ -88,9 +88,10 @@ MIT — Fork freely. See `docs/fork-policy.md`.
 - **Early prototype / design stage.** Nothing here has been deployed or audited.
 - Core protocol (BitVM2 draws, yield proofs, covenant vaults) is **not implemented** — `bitvm/`, `yield-adapters/`, and `governance/` are design references / mocks, not production security boundaries.
 - Frontend is a UI mockup, not a functional client.
-- **Phase 0–1 complete**; **Phase 2 slice:** real testnet block hashes → offline draw (`npm run testnet:draw`, web at Coolify). Still **not** mainnet-ready.
-- **Production path:** `docs/production-roadmap.md` (P0 → P1 → **P2** → P3 audit → P4 capped mainnet → P5 scale).
+- **Phase 0–2 complete**; hosted prototype at Coolify with testnet draws. **Phase 3 prep** (audit packaging) in progress. Still **not** mainnet-ready / not audited.
+- **Production path:** `docs/production-roadmap.md` (P0 → P1 → P2 → **P3** → P4 capped mainnet → P5 scale).
 - **Hosted prototype:** https://satstogether.greerso.com — interactive sim ledger + testnet draw. See `docs/coolify.md`.
+- **Security prep:** `docs/phase-3-audit-package.md`, `docs/bitvm-challenge-game.md`, `docs/bug-bounty-scope.md`.
 - Mainnet deployment and the TVL cap are unimplemented design goals; audits have not happened and are not scheduled.
 
 Built with ❤️ for Bitcoin. No VCs. No premine. Pure decentralization.

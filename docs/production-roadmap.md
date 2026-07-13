@@ -1,6 +1,7 @@
 # SatsTogether — Production Roadmap
 
-**Status as of 2026-07-12:** Early prototype / design reference. **No production plan existed before this document** — only aspirational checklists in `docs/audit-checklist.md` and `docs/testnet-guide.md` that correctly state *nothing is implemented or deployed*.
+**Status as of 2026-07-12:** Early prototype / design reference with a **hosted testnet-draw simulator**.  
+BitVM2 fraud proofs, real yield, and principal vaults remain **design goals**, not deliverables of P0–P3-prep.
 
 This roadmap is the plan. Each phase has **exit criteria** you can test. Skipping phases to “mainnet” is unsafe and out of scope.
 
@@ -14,12 +15,12 @@ For a **Bitcoin L1 prize-linked savings protocol** with principal-protection cla
 |------|------------|
 | **P0 — Honest foundation** | Code that exists is tested; claims match reality; CI/smoke green |
 | **P1 — Spec & sim** | Protocol fully specified; off-chain sim matches tests; threat model written |
-| **P2 — Testnet vertical slice** | One real path on Bitcoin/Lightning **testnet** (deposit or draw mock with real chain data) |
+| **P2 — Testnet vertical slice** | One real path on Bitcoin **testnet** (draw inputs from real block hashes) |
 | **P3 — Security ready** | Independent review of crypto/protocol; bug bounty funded; no central keys |
 | **P4 — Mainnet capped** | Mainnet with hard TVL cap, kill-switch policy, monitoring; legal review complete |
 | **P5 — Production scale** | Cap raised only after audits + ops maturity |
 
-**We are completing Phase 2 (testnet vertical slice: block-hash → draw).** Phase 0–1 offline foundation is complete. BitVM2 fraud proofs, real yield, and principal vaults remain **design goals**, not deliverables of P0–P2.
+**We are in Phase 3 prep (security readiness packaging).** Phases 0–2 exit criteria for the chosen slices are complete. P3 **exit** still requires real external audit + funded bounty — not done.
 
 ---
 
@@ -27,85 +28,48 @@ For a **Bitcoin L1 prize-linked savings protocol** with principal-protection cla
 
 | Area | Reality |
 |------|---------|
-| Deployments | None (no testnet, no mainnet) |
-| BitVM2 | Sketch / mock only (`bitvm/`, `placeholder_mix`) |
-| Governance crypto | Mock hash “signatures”, not BIP-322 |
-| Yield | Mock deterministic yields |
-| Frontend | Expo UI mock, not wired to chain |
-| Tests | Rust draw unit tests + root `npm test` (governance, yield, sim); `./scripts/smoke-test.sh` green when both pass |
-| Legal / audit | Framing docs only; checklist all unchecked |
+| Deployments | Coolify HTTPS prototype: https://satstogether.greerso.com (ephemeral sim; not mainnet) |
+| BitVM2 | Sketch / mock only (`bitvm/`, `placeholder_mix`); challenge game **design draft** only |
+| Governance crypto | MockSigner + **Bip322Signer stub** (throws / fail-closed) |
+| Yield | Mock deterministic yields (`MockBitVMVerifier`) |
+| Frontend | Flow UI + interactive ledger on web; RN mock still separate |
+| Tests | Rust + root `npm test`; `./scripts/smoke-test.sh`; GitHub Actions smoke workflow |
+| Legal / audit | Framing + checklist **mapped**; no counsel review; no external audit |
 
 ---
 
-## Phase 0 — Honest foundation *(complete on main as of #2)*
+## Phase 0 — Honest foundation *(complete)*
 
-**Goal:** Anything we ship is measurable, testable, and non-misleading.
-
-### Goals
-
-1. Automated tests for **all pure logic that already exists** (Rust draw model, TS governance tally, mock verifier/rotator).
-2. Smoke script **passes** only when those tests pass (no fake success, no always-fail with no signal).
-3. Production roadmap + hybrid workflow documented (this file + `docs/hybrid-workflow.md`).
-4. README/status stay honest.
-
-### Exit criteria (all must pass)
-
-- [x] `cargo test` in `bitvm/` — green  
-- [x] Root `npm test` (or equivalent) for governance + bitvm TS + rotator — green  
-- [x] `./scripts/smoke-test.sh` exits 0 when unit tests pass  
-- [x] No new code path claims mainnet / real funds / real BitVM2 proofs  
-- [x] This roadmap committed and linked from README  
-
-*(Checked when Phase 0 work lands on the integration branch; re-run smoke after every change.)*
-
-### Out of scope for P0
-
-Real Bitcoin, Lightning, BitVM2 circuits, mainnet scripts that succeed, legal sign-off.
+Exit criteria: all checked (cargo + npm + smoke; honesty; roadmap).
 
 ---
 
 ## Phase 1 — Spec & deterministic simulation *(complete)*
 
-**Goal:** One written protocol you can implement against without inventing behavior.
-
-### Goals
-
-1. `docs/protocol-spec.md`: deposit, share accounting, yield accrual, draw, claim, withdraw, pods (even if future phases implement).  
-2. `docs/threat-model.md`: MEV, sybil QV, operator keys, mock→real crypto migration.  
-3. Deterministic **off-chain simulator** (TS or Rust) for draw + share ledger with property tests.  
-4. Replace or wall off mock crypto behind interfaces (`Signer`, `YieldProofVerifier`) so production impls can drop in later.
-
-### Exit criteria
-
-- [x] Spec reviewed (human) for internal consistency — 2026-07-12 (Danny; after Opus critical-assessment + follow-up #5)  
-- [x] Simulator tests cover: zero shares, n winners > n shares, duplicate rejection, deterministic seeds (`tests/sim.test.ts`, `sim/`)  
-- [x] Interfaces defined; mocks implement interfaces explicitly labeled `Mock*` (`Signer`/`MockSigner`, `YieldProofVerifier`/`MockBitVMVerifier`)  
-- [x] Local gate runs P0+P1 tests via `./scripts/smoke-test.sh` (no paid GH Actions required)  
+Exit criteria: all checked (spec human review, sim property tests, Mock* interfaces).
 
 ---
 
-## Phase 2 — Testnet vertical slice *(slice complete: block-hash → draw)*
+## Phase 2 — Testnet vertical slice *(complete — block-hash → draw)*
 
 **Goal:** One **real** testnet integration path, not a full product.
 
-Pick **one** slice (recommended order):
-
-1. **Randomness / draw inputs:** read real testnet block hashes into the draw model (still off-chain selection).  
-2. **Or Lightning testnet UX:** invoice pay/receive mock deposit UI with real testnet LN (no principal vault).  
-3. **Or Taproot Assets testnet** experiment in isolation (if toolchain ready).
-
 ### Exit criteria
 
-- [x] Documented testnet runbook that a second person can follow (`docs/testnet-guide.md`)  
-- [x] Automated or scripted check against testnet (`npm run testnet:draw` / `./scripts/testnet-check.sh`; soft-fail if network down)  
-- [x] CLI shows **testnet-only** banners; no mainnet defaults (`scripts/testnet-draw.ts`)  
+- [x] Documented testnet runbook (`docs/testnet-guide.md`)  
+- [x] Scripted check (`npm run testnet:draw` / `./scripts/testnet-check.sh`; soft-fail if network down)  
+- [x] Testnet-only banners; no mainnet defaults  
 - [x] `deploy-mainnet.sh` still refuses  
+- [x] Hosted demo uses live testnet/signet tip hashes for draws  
 
-**Slice shipped:** randomness / draw inputs from public testnet (or signet) explorer REST → offline `selectWinners`. Not Lightning, not vaults, not BitVM2.
+**Slice shipped:** public explorer REST → offline `selectWinners` + interactive web ledger.  
+**Not shipped:** Lightning vaults, Taproot Assets product path, BitVM2.
+
+Optional future P2 slices (not required to exit): LN testnet UX, Taproot Assets experiment.
 
 ---
 
-## Phase 3 — Security readiness
+## Phase 3 — Security readiness *(prep in progress)*
 
 **Goal:** Fit for external review; not yet open TVL.
 
@@ -117,37 +81,35 @@ Pick **one** slice (recommended order):
 4. Bug bounty wallet + scope.  
 5. No admin upgrade keys in design (or explicit time-locked emergency path documented).
 
-### Exit criteria
+### Prep deliverables (this repo)
+
+- [x] `docs/phase-3-audit-package.md`  
+- [x] `docs/bitvm-challenge-game.md` (design freeze draft)  
+- [x] `docs/bug-bounty-scope.md` (unfunded)  
+- [x] `docs/audit-checklist.md` mapped Done/Design/Mock/Deferred  
+- [x] `governance/bip322-signer.ts` fail-closed stub  
+- [x] CI smoke workflow (`.github/workflows/smoke.yml`)  
+- [ ] Audit engagement signed  
+- [ ] Bounty funded + contact published  
+- [ ] Legal counsel review  
+
+### Exit criteria (not met)
 
 - [ ] Audit report(s) with criticals fixed  
-- [ ] `docs/audit-checklist.md` items either done or explicitly deferred with reason  
-- [ ] Legal framing reviewed for target jurisdictions (prize-linked savings vs gambling)  
+- [ ] Checklist items either done or deferred with reason **and** external review accepted  
+- [ ] Legal framing reviewed for target jurisdictions  
 
 ---
 
 ## Phase 4 — Mainnet capped
 
-**Goal:** Real BTC with **hard** safety rails.
-
-### Goals
-
-1. TVL cap enforced in protocol/scripts (e.g. design 10 BTC cap — exact number is a product decision).  
-2. Monitoring, incident runbook, pause/migration policy.  
-3. Tax CSV / audit log as far as protocol allows.  
-4. Newbie UX tested on real small flows.
-
-### Exit criteria
-
-- [ ] Cap cannot be raised without transparent on-chain/governance process  
-- [ ] Dry-run mainnet with dust amounts by team  
-- [ ] Public disclosure: unaudited risks remaining  
-- [ ] Auditor sign-off if claiming principal protection  
+**Blocked on P3 exit.** Real BTC with hard TVL cap, monitoring, legal, auditor sign-off for principal-protection claims.
 
 ---
 
 ## Phase 5 — Production scale
 
-Raise caps, multi-source yield, pods, QF treasury — only after P4 stability period and further audits.
+Raise caps, multi-source yield, pods, QF treasury — only after P4 stability + further audits.
 
 ---
 
@@ -166,20 +128,21 @@ Raise caps, multi-source yield, pods, QF treasury — only after P4 stability pe
 
 ## Immediate next actions (ordered)
 
-1. Optional: re-run live `./scripts/testnet-check.sh` on a second machine / person.  
-2. Keep Phase 2 honest — do not claim full product; pick next slice only if needed (LN testnet UX or Taproot Assets).  
-3. Phase 3 prep only after a stable testnet path and clear audit scope.  
-4. Defer UI polish and mainnet deploy work.  
-5. Hybrid pipeline for larger design changes (`docs/hybrid-workflow.md`).
+1. Commission external protocol review using `docs/phase-3-audit-package.md`.  
+2. Fund bug bounty only after contact + scope published.  
+3. Implement real BIP-322 (or drop governance path) after interface review.  
+4. Circuit work only after challenge-game freeze checklist complete.  
+5. **Do not** start mainnet deploy or TVL marketing.
 
 ---
 
-## Explicit non-goals until P3+
+## Explicit non-goals until P3 exit is real
 
 - Marketing as “no-loss guaranteed” without vault enforcement  
 - Mainnet TVL marketing  
-- Claiming BitVM2 security for `placeholder_mix` draw model  
-- Claiming quadratic voting is sybil-resistant under mock multi-key
+- Claiming BitVM2 security for `placeholder_mix`  
+- Claiming quadratic voting is sybil-resistant under mock multi-key  
+- Claiming “audited” without published reports  
 
 ---
 
@@ -189,6 +152,7 @@ Raise caps, multi-source yield, pods, QF treasury — only after P4 stability pe
 |---------|------|-------|
 | 0.1.0 | 2026-07-12 | First real production roadmap; P0 kickoff |
 | 0.2.0 | 2026-07-12 | P0 complete; P1 sim + interfaces in progress |
-| 0.3.0 | 2026-07-12 | P1 complete (human spec review); Phase 2 current |
+| 0.3.0 | 2026-07-12 | P1 complete; Phase 2 current |
+| 0.4.0 | 2026-07-12 | P2 complete; Phase 3 prep package |
 
-Related: `docs/audit-checklist.md`, `docs/testnet-guide.md`, `docs/legal-framing.md`, `CLAUDE.md`, `scripts/hybrid-pipeline.sh`.
+Related: `docs/audit-checklist.md`, `docs/phase-3-audit-package.md`, `docs/bitvm-challenge-game.md`, `docs/testnet-guide.md`, `docs/legal-framing.md`, `CLAUDE.md`.

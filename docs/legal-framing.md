@@ -11,4 +11,4 @@ SatsTogether is **designed** as a decentralized prize-linked savings protocol â€
 
 All code is intended to be open-source (MIT) once implemented. Anyone will be able to audit, fork, or run their own instance.
 
-**Tax Note**: Prizes may be taxable events in your jurisdiction. A CSV export of prizes is a planned feature, not yet built.
+**Tax Note**: Prizes may be taxable events in your jurisdiction. Session export JSON includes draw/claim history as a **prototype** audit log; a formal tax CSV is not a compliance product.
