@@ -39,10 +39,12 @@
 4. Affected commit SHA  
 5. Suggested fix (optional)  
 
-## Contact (placeholder)
+## Contact (placeholder until program is funded)
 
-- Security contact: **TBD** (set before funding bounty)  
+- Security contact: see root `SECURITY.md`  
+- Email: **security@greerso.com** *(update before funding)*  
 - PGP: **TBD**  
+- Bounty wallet: **TBD — do not send funds until published**  
 
 ## Document control
 
