@@ -299,6 +299,45 @@ describe('sim/ledger share accounting', () => {
     assert.equal(restored.claimBalance('bob'), ledger.claimBalance('bob'));
   });
 
+  it('restore rejects inconsistent snapshots', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 2000n);
+    const snap = ledger.snapshot();
+    // principal mismatch
+    const badPrincipal = structuredClone({
+      ...snap,
+      positions: snap.positions.map(p => ({
+        ...p,
+        segments: p.segments.map(s => ({ ...s })),
+        principalSats: 999n,
+      })),
+    });
+    assert.throws(() => ShareLedger.restore(badPrincipal), /principalSats/);
+
+    // overlapping indices: two positions same index
+    const badOverlap = structuredClone({
+      ...snap,
+      positions: [
+        {
+          account: 'a',
+          startIndex: 0n,
+          shareCount: 1n,
+          principalSats: 1000n,
+          segments: [{ startIndex: 0n, shareCount: 1n }],
+        },
+        {
+          account: 'b',
+          startIndex: 0n,
+          shareCount: 1n,
+          principalSats: 1000n,
+          segments: [{ startIndex: 0n, shareCount: 1n }],
+        },
+      ],
+      nextShareIndex: 2n,
+    });
+    assert.throws(() => ShareLedger.restore(badOverlap), /overlapping/);
+  });
+
   it('partial claim leaves remainder', () => {
     const ledger = new ShareLedger();
     ledger.deposit('alice', 1000n);

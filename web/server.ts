@@ -30,6 +30,13 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 const COOKIE = 'st_session';
 const REQUIRE_COMMIT = seedCommitRequired(PUBLIC_URL);
+/** When true (Coolify/Traefik), derive client IP from proxy headers; never trust raw client XFF alone. */
+const TRUST_PROXY =
+  process.env.TRUST_PROXY === '1' ||
+  process.env.TRUST_PROXY === 'true' ||
+  (PUBLIC_URL.startsWith('https://') && process.env.TRUST_PROXY !== '0');
+/** Number of trusted reverse-proxy hops (Coolify typically 1). Client = that many from the right of XFF. */
+const TRUST_PROXY_HOPS = Math.max(1, Number(process.env.TRUST_PROXY_HOPS || 1) || 1);
 
 /** Simple per-IP throttle (in-memory, best-effort). */
 const rateHits = new Map<string, number>();
@@ -48,10 +55,31 @@ const MAX_BODY_BYTES = 1_000_000;
 const MAX_WINNERS = 1_000;
 const MAX_DRAW_SHARES = 1_000_000n; // legacy endpoint totalShares (no minting there)
 
+/**
+ * Client IP for rate limits.
+ * - TRUST_PROXY off (local default): socket only — ignores spoofable XFF.
+ * - TRUST_PROXY on (HTTPS Coolify default): X-Real-IP, else XFF entry `hops` from the right
+ *   (Traefik appends the real client; leftmost can be attacker-supplied).
+ */
 function clientIp(req: IncomingMessage): string {
+  const remote = req.socket.remoteAddress || 'unknown';
+  if (!TRUST_PROXY) return remote;
+
+  const real = req.headers['x-real-ip'];
+  if (typeof real === 'string' && real.trim()) return real.trim();
+
   const xf = req.headers['x-forwarded-for'];
-  if (typeof xf === 'string' && xf.length) return xf.split(',')[0]!.trim();
-  return req.socket.remoteAddress || 'unknown';
+  if (typeof xf === 'string' && xf.length) {
+    const parts = xf
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (parts.length > 0) {
+      const idx = Math.max(0, parts.length - TRUST_PROXY_HOPS);
+      return parts[idx]!;
+    }
+  }
+  return remote;
 }
 
 function rateAllowed(req: IncomingMessage, key: string, cooldownMs: number): boolean {
