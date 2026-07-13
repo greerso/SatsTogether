@@ -89,6 +89,8 @@ Optional future P2 slices (not required to exit): LN testnet UX, Taproot Assets 
 - [x] `docs/audit-checklist.md` mapped Done/Design/Mock/Deferred  
 - [x] `governance/bip322-signer.ts` fail-closed stub  
 - [x] CI smoke workflow (`.github/workflows/smoke.yml`)  
+- [x] `docs/ops-emergency-policy.md` — pause / no stealth upgrade policy  
+- [x] Mandatory seed commit-reveal for HTTPS session draws  
 - [ ] Audit engagement signed  
 - [ ] Bounty funded + contact published  
 - [ ] Legal counsel review  

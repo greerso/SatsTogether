@@ -4,8 +4,8 @@
 bounty is funded. This package exists so a future auditor/reviewer can see
 exactly what is real vs design vs mock.
 
-**Related:** `docs/audit-checklist.md`, `docs/bitvm-challenge-game.md`,
-`docs/bug-bounty-scope.md`, `docs/protocol-spec.md`, `docs/threat-model.md`.
+Related: `docs/audit-checklist.md`, `docs/bitvm-challenge-game.md`, `docs/bug-bounty-scope.md`,
+`docs/ops-emergency-policy.md`, `docs/protocol-spec.md`, `docs/threat-model.md`.
 
 ---
 

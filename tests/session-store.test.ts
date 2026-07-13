@@ -9,6 +9,7 @@ import {
   snapshotJson,
   commitSeed,
   assertSeedReveal,
+  seedCommitRequired,
   sha256Hex,
   ledgerFromSnapshotJson,
 } from '../web/session-store.ts';
@@ -55,6 +56,18 @@ describe('web/session-store', () => {
     assert.throws(() => assertSeedReveal(state, 'wrong'), /commitment/);
     assert.doesNotThrow(() => assertSeedReveal(state, 'secret-seed'));
     assert.equal(state.seedCommit?.hashHex, sha256Hex('secret-seed'));
+  });
+
+  it('required commit fails when missing', () => {
+    const { state } = getOrCreateSession(undefined);
+    assert.throws(() => assertSeedReveal(state, 'x', { required: true }), /commit required/);
+  });
+
+  it('seedCommitRequired defaults https on / env override', () => {
+    assert.equal(seedCommitRequired('https://satstogether.greerso.com', {}), true);
+    assert.equal(seedCommitRequired('http://localhost:3000', {}), false);
+    assert.equal(seedCommitRequired('http://localhost:3000', { REQUIRE_SEED_COMMIT: '1' }), true);
+    assert.equal(seedCommitRequired('https://x.com', { REQUIRE_SEED_COMMIT: '0' }), false);
   });
 
   it('export/import round-trips ledger + claims', () => {

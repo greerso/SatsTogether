@@ -66,13 +66,32 @@ export function clearSeedCommit(state: SessionState) {
   delete state.seedCommit;
 }
 
-/** If a commit exists, seed must hash-match; otherwise free seed ok. */
-export function assertSeedReveal(state: SessionState, seed: string): void {
-  if (!state.seedCommit) return;
+/** If a commit exists, seed must hash-match. When `required`, missing commit fails. */
+export function assertSeedReveal(
+  state: SessionState,
+  seed: string,
+  opts?: { required?: boolean },
+): void {
+  if (!state.seedCommit) {
+    if (opts?.required) {
+      throw new Error('seed commit required before draw — POST /api/session/commit first (commit-reveal)');
+    }
+    return;
+  }
   const h = sha256Hex(seed);
   if (h !== state.seedCommit.hashHex) {
     throw new Error('seed does not match commitment (commit-reveal)');
   }
+}
+
+// Node types optional under strip-types; avoid NodeJS.ProcessEnv in public API.
+export function seedCommitRequired(
+  publicUrl: string,
+  env: Record<string, string | undefined> = process.env as Record<string, string | undefined>,
+): boolean {
+  if (env.REQUIRE_SEED_COMMIT === '0' || env.REQUIRE_SEED_COMMIT === 'false') return false;
+  if (env.REQUIRE_SEED_COMMIT === '1' || env.REQUIRE_SEED_COMMIT === 'true') return true;
+  return publicUrl.startsWith('https://');
 }
 
 export function snapshotJson(ledger: ShareLedger, seedCommit?: SeedCommit) {

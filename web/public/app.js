@@ -406,6 +406,15 @@ $('btn-withdraw').onclick = () =>
 $('btn-draw').onclick = () =>
   withBusy($('btn-draw'), async () => {
     try {
+      // Auto-commit if server requires reveal and we have no open commit.
+      const sess = await api('/api/session');
+      if (!sess.snapshot.seedCommit) {
+        log('Committing seed before draw (commit-reveal)…');
+        await api('/api/session/commit', {
+          method: 'POST',
+          body: JSON.stringify({ seed: $('seed').value }),
+        });
+      }
       log('Fetching ' + $('network').value + ' tip hashes…');
       const body = await api('/api/session/draw', {
         method: 'POST',
