@@ -1,0 +1,51 @@
+# Bug bounty scope (draft — not funded)
+
+**Status:** Scope template only. **No bounty wallet is funded.**  
+**Do not** submit reports expecting payout until a funded program is announced.
+
+---
+
+## In scope (when program is live)
+
+| Asset | Notes |
+|-------|--------|
+| `sim/*` protocol accounting | Double-spend of principal, incorrect claim credits, overflow |
+| `web/*` hosted prototype | Authz on sessions, XSS, RCE, mass assignment |
+| `testnet/*` integration | Mainnet accidental enablement, SSRF via explorer URL |
+| Spec vs implementation | Documented invariants that code violates |
+
+## Out of scope
+
+- Social engineering, physical attacks  
+- DoS without a clear amplification bug (we already rate-limit demo/draw)  
+- Issues requiring mainnet funds (there is no mainnet product)  
+- Theoretical BitVM2 circuit bugs before circuits exist  
+- Third-party explorer downtime  
+
+## Severity (indicative)
+
+| Severity | Example |
+|----------|---------|
+| Critical | Steal principal in a deployed vault design; remote code exec on production host |
+| High | Forge claim balances across sessions; bypass Secure cookie / session isolation |
+| Medium | Stored XSS via import; unbounded resource use bypassing caps |
+| Low | Honesty/copy overclaim; missing rate limit on non-mutating endpoints |
+
+## Report format (when open)
+
+1. Summary  
+2. Impact  
+3. Steps to reproduce  
+4. Affected commit SHA  
+5. Suggested fix (optional)  
+
+## Contact (placeholder)
+
+- Security contact: **TBD** (set before funding bounty)  
+- PGP: **TBD**  
+
+## Document control
+
+| Version | Date | Notes |
+|---------|------|-------|
+| 0.1.0-draft | 2026-07-12 | Unfunded scope draft for Phase 3 prep |

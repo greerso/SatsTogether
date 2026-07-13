@@ -60,7 +60,7 @@ npm test   # from repo root
 
 ## Production path
 
-See `docs/production-roadmap.md`. **Phase 0–1 complete**. **Phase 2 slice:** testnet/signet block hashes → offline draw (`npm run testnet:draw`). Production/mainnet is P4+ only after audit gates.
+See `docs/production-roadmap.md`. **Phase 0–2 complete** (offline tests + testnet block-hash draw slice + hosted prototype). **Phase 3 prep:** audit package, challenge-game design draft, BIP-322 stub, unfunded bounty scope. Production/mainnet is P4+ only after audit gates.
 
 ## Related docs
 
