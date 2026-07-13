@@ -49,8 +49,8 @@ smoke — oversized (2 MB) POST body → `400`, valid import → `200`, `/health
 | Med | ST-4 | commit-reveal provides no draw fairness: tip hashes are public before commit; caller grinds `userSeed` to pick winners | `sim/draw.ts`, honesty copy | **Open (design)** — honesty copy softened 2026-07-13 |
 | Low | ST-5 | Session-eviction griefing: unauthenticated session flood (FIFO evict at `MAX_SESSIONS=500`) drops live users' state | `web/session-store.ts` | **Fixed (2026-07-13)** — LRU eviction + 2s new-session rate limit per IP |
 | Low | ST-6 | `restore` accepts internally-inconsistent snapshots (overlapping segments, principal≠shares) | `sim/ledger.ts` restore | **Fixed (2026-07-13)** — consistency checks + overlap reject |
-| Low | ST-7 | Bounded-but-expensive 1M-entry mint loop on deposit/import (cheap request → expensive work) | `sim/ledger.ts:148-150`, `:370-377` | **Open** (ceiling documented via `ponytail:` note) |
-| Low | ST-8 | Raw `e.message` returned to client on unhandled error (minor internal-detail leak) | `web/server.ts` catch-all (`json(res, 400, { error: e.message })`) | **Open** (messages internally generated; low value) |
+| Low | ST-7 | Bounded-but-expensive 1M-entry mint loop on deposit/import (cheap request → expensive work) | `sim/ledger.ts` | **Fixed (2026-07-13)** — segment-range ownership (no per-index map) |
+| Low | ST-8 | Raw `e.message` returned to client on unhandled error (minor internal-detail leak) | `web/server.ts` catch-all | **Fixed (2026-07-13)** — publicErrorMessage allowlist |
 
 ### Detail on fixed items
 
