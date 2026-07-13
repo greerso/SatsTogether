@@ -19,6 +19,25 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 const COOKIE = 'st_session';
 
+/** Simple per-IP demo throttle (in-memory, best-effort). */
+const demoHits = new Map<string, number>();
+const DEMO_COOLDOWN_MS = 15_000;
+
+function clientIp(req: IncomingMessage): string {
+  const xf = req.headers['x-forwarded-for'];
+  if (typeof xf === 'string' && xf.length) return xf.split(',')[0]!.trim();
+  return req.socket.remoteAddress || 'unknown';
+}
+
+function demoAllowed(req: IncomingMessage): boolean {
+  const ip = clientIp(req);
+  const now = Date.now();
+  const last = demoHits.get(ip) || 0;
+  if (now - last < DEMO_COOLDOWN_MS) return false;
+  demoHits.set(ip, now);
+  return true;
+}
+
 // Explicit static allowlist — no filesystem passthrough (no ../ traversal).
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'public');
 const STATIC_FILES: Record<string, { file: string; type: string }> = {
@@ -26,6 +45,7 @@ const STATIC_FILES: Record<string, { file: string; type: string }> = {
   '/index.html': { file: 'index.html', type: 'text/html; charset=utf-8' },
   '/styles.css': { file: 'styles.css', type: 'text/css; charset=utf-8' },
   '/app.js': { file: 'app.js', type: 'text/javascript; charset=utf-8' },
+  '/robots.txt': { file: 'robots.txt', type: 'text/plain; charset=utf-8' },
 };
 
 function htmlEscape(s: string): string {
@@ -277,6 +297,13 @@ const server = createServer(async (req, res) => {
 
     // One-click demo: reset → multi-user deposits → yield → testnet draw
     if (req.method === 'POST' && url.pathname === '/api/session/demo') {
+      if (!demoAllowed(req)) {
+        json(res, 429, {
+          ok: false,
+          error: 'demo cooldown — wait ~15s (protects public explorer + session churn)',
+        });
+        return;
+      }
       const cookies = parseCookies(req);
       const { id } = getOrCreateLedger(cookies[COOKIE]);
       const ledger = resetLedger(id);
