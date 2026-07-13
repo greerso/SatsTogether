@@ -170,7 +170,10 @@ Production: amount must come from `YieldProofVerifier.isValidYieldProof` + settl
 ### 3.4 Claim prize
 
 - Design: winners receive **yield sats only**, never principal.
-- Sim: `DrawRecord.allocated` is an epoch audit sink only; per-account claim balances are future work.
+- Sim v1:
+  - On draw, `byAccount` amounts are credited to per-account `claimBalances`.
+  - `claim(account)` drains the credit (mock “payout”) — **no Lightning / on-chain send**.
+  - Export/import preserves claim balances.
 - Invariant: sum of yield allocated from the share-ledger pool ≤ that epoch's yield pool before allocation (rotator buffer is out of scope for this bound; §2.4).
 
 ### 3.5 Withdraw principal

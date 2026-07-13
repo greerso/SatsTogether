@@ -237,6 +237,36 @@
       </div>
     </div>
 
+    <!-- ══ CLAIM YIELD (sim credits) ══ -->
+    <div class="section-label">CLAIM YIELD · SIM ONLY</div>
+    <div class="card">
+      <p style="margin:0 0 8px;font-size:14px;color:var(--muted)">Draws credit <b>claimBalances</b> (yield only). Claim drains the mock ledger — <span class="illus">not Lightning</span>.</p>
+      <div id="claims" style="color:var(--muted);font-size:14px;margin-bottom:10px">No claim credits</div>
+      <label>Account id <input id="claim-account" value="alice" /></label>
+      <button type="button" class="btn teal" id="btn-claim">Claim yield (sim)</button>
+    </div>
+
+    <!-- ══ COMMIT-REVEAL SEED ══ -->
+    <div class="section-label">SEED COMMIT · REVEAL AT DRAW</div>
+    <div class="card">
+      <p style="margin:0 0 8px;font-size:14px;color:var(--muted)">Optional: commit <code>sha256(seed)</code> before the tip moves. Draw must use the same seed string. Prototype only.</p>
+      <div class="mono" id="commit-status" style="font-size:12px;color:var(--muted);margin-bottom:8px">No commitment</div>
+      <button type="button" class="btn ghost" id="btn-commit">Commit current seed</button>
+    </div>
+
+    <!-- ══ EXPORT / IMPORT ══ -->
+    <div class="section-label">SESSION EXPORT</div>
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button type="button" class="btn ghost" style="margin-top:0;width:auto" id="btn-export">Export JSON</button>
+        <label class="btn ghost" style="margin-top:0;width:auto;display:inline-flex;cursor:pointer">
+          Import JSON
+          <input id="import-file" type="file" accept="application/json,.json" hidden />
+        </label>
+      </div>
+      <pre id="export-out" hidden style="margin-top:12px;max-height:160px;overflow:auto;font-size:11px"></pre>
+    </div>
+
     <!-- ══ LOG ══ -->
     <div class="section-label">ACTIVITY LOG</div>
     <div id="log">Ready.</div>

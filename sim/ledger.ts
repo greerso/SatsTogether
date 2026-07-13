@@ -68,6 +68,8 @@ export interface LedgerSnapshot {
   positions: Position[];
   draws: DrawRecord[];
   epoch: number;
+  /** Claimable yield credits (sim only — not real payout). */
+  claimBalances: Record<string, bigint>;
 }
 
 function clonePos(p: Position): Position {
@@ -89,6 +91,8 @@ export class ShareLedger {
   private epoch = 0;
   /** Map share index → account for O(1) winner lookup (sparse ok for sim). */
   private ownerByIndex = new Map<string, AccountId>();
+  /** Yield credits from draws (audit + claim drain). Not Lightning delivery. */
+  private claimBalances = new Map<AccountId, bigint>();
 
   constructor(satsPerShare: bigint = DEFAULT_SATS_PER_SHARE) {
     if (satsPerShare <= 0n) {
@@ -170,7 +174,8 @@ export class ShareLedger {
   /**
    * Run a draw over high-water share indices `[0, nextShareIndex)`.
    * Burned indices may be selected but are filtered out (no allocation).
-   * Allocated sats leave the yield pool into DrawRecord only (not credited to accounts).
+   * Allocated sats leave the yield pool; byAccount is credited to claimBalances
+   * (sim claim credits — not real BTC delivery).
    * Remainder (yieldPool % liveCount) stays in the pool.
    * Known sim policy: high-water + skip-burned can concentrate prizes under churn.
    */
@@ -199,6 +204,9 @@ export class ShareLedger {
       byAccount[owner] = (byAccount[owner] ?? 0n) + prizePerWinner;
       winnerDetails.push({ index: idx, account: owner });
     }
+    for (const [acct, amt] of Object.entries(byAccount)) {
+      this.claimBalances.set(acct, (this.claimBalances.get(acct) ?? 0n) + amt);
+    }
     const rec: DrawRecord = {
       epoch: this.epoch,
       winners: liveWinners,
@@ -215,6 +223,22 @@ export class ShareLedger {
       winnerDetails: winnerDetails.map(w => ({ ...w })),
       byAccount: { ...byAccount },
     };
+  }
+
+  claimBalance(account: AccountId): bigint {
+    return this.claimBalances.get(account) ?? 0n;
+  }
+
+  /**
+   * Drain claim credit for an account (sim only).
+   * Marks yield as "claimed" in the mock — no Lightning / on-chain send.
+   */
+  claim(account: AccountId): { claimedSats: bigint } {
+    if (!account) throw new Error('account required');
+    const bal = this.claimBalances.get(account) ?? 0n;
+    if (bal <= 0n) throw new Error('no claim balance');
+    this.claimBalances.set(account, 0n);
+    return { claimedSats: bal };
   }
 
   /** Owner of a share index, or null if burned/never minted. */
@@ -248,6 +272,10 @@ export class ShareLedger {
   }
 
   snapshot(): LedgerSnapshot {
+    const claimBalances: Record<string, bigint> = {};
+    for (const [k, v] of this.claimBalances) {
+      if (v > 0n) claimBalances[k] = v;
+    }
     return {
       totalShares: this.totalShares,
       totalPrincipalSats: this.totalPrincipalSats,
@@ -261,6 +289,36 @@ export class ShareLedger {
         byAccount: { ...d.byAccount },
       })),
       epoch: this.epoch,
+      claimBalances,
     };
+  }
+
+  /**
+   * Restore a ledger from a full snapshot (export/import). Rebuilds ownership map.
+   */
+  static restore(snap: LedgerSnapshot, satsPerShare: bigint = DEFAULT_SATS_PER_SHARE): ShareLedger {
+    const ledger = new ShareLedger(satsPerShare);
+    ledger.nextShareIndex = snap.nextShareIndex;
+    ledger.yieldPoolSats = snap.yieldPoolSats;
+    ledger.epoch = snap.epoch;
+    ledger.draws = snap.draws.map(d => ({
+      ...d,
+      winners: [...d.winners],
+      winnerDetails: d.winnerDetails.map(w => ({ ...w })),
+      byAccount: { ...d.byAccount },
+    }));
+    for (const p of snap.positions) {
+      const pos = clonePos(p);
+      ledger.positions.set(pos.account, pos);
+      for (const seg of pos.segments) {
+        for (let i = 0n; i < seg.shareCount; i++) {
+          ledger.ownerByIndex.set((seg.startIndex + i).toString(), pos.account);
+        }
+      }
+    }
+    for (const [acct, amt] of Object.entries(snap.claimBalances || {})) {
+      if (amt > 0n) ledger.claimBalances.set(acct, amt);
+    }
+    return ledger;
   }
 }
