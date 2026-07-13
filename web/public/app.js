@@ -3,6 +3,16 @@
 
 const $ = (id) => document.getElementById(id);
 const logEl = $('log');
+
+// Escape user-controlled strings (account ids) before innerHTML. Account names
+// are arbitrary and can arrive via session import, so unescaped injection = XSS.
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 const AVATAR_COLORS = ['#FFB84D', '#FFCE8A', '#FFE0B0', '#F4552E', '#12A594', '#F7931A'];
 
 function log(msg, ok) {
@@ -96,7 +106,7 @@ function render(snap) {
         .map(
           (p) =>
             '<tr><td>' +
-            p.account +
+            esc(p.account) +
             '</td><td class="mono">' +
             p.startIndex +
             '</td><td>' +
@@ -118,13 +128,13 @@ function render(snap) {
         .map((d) => {
           const details = d.winnerDetails;
           const winLabel = details && details.length
-            ? details.map((w) => w.index + (w.account ? '→' + w.account : '')).join(', ')
+            ? details.map((w) => w.index + (w.account ? '→' + esc(w.account) : '')).join(', ')
             : d.winners.length
               ? d.winners.join(', ')
               : '—';
           const by = d.byAccount
             ? Object.entries(d.byAccount)
-                .map(([k, v]) => k + ':' + fmt(v))
+                .map(([k, v]) => esc(k) + ':' + fmt(v))
                 .join(' · ')
             : '—';
           return (
@@ -190,7 +200,7 @@ function render(snap) {
     claimsEl.innerHTML = claimEntries.length
       ? '<table><tr><th>account</th><th>claimable (sim)</th></tr>' +
         claimEntries
-          .map(([k, v]) => '<tr><td>' + k + '</td><td class="win">' + fmt(v) + ' sats</td></tr>')
+          .map(([k, v]) => '<tr><td>' + esc(k) + '</td><td class="win">' + fmt(v) + ' sats</td></tr>')
           .join('') +
         '</table>'
       : 'No claim credits';

@@ -29,7 +29,7 @@
     <h1 class="hero-title disp">Save Bitcoin. Win Bitcoin.<br />Never lose it.</h1>
     <p class="lede">A prize-linked savings flow for a no-loss Bitcoin protocol. Your principal is always
       100% yours — only the yield funds the weekly prize pool. Deposit sats, mint SatsShares, and run
-      a provably-fair draw off real testnet block hashes.</p>
+      a transparent draw off real testnet block hashes.</p>
 
     <!-- ══ PRIZE POOL HERO — live session yield (screens 03 / 04 / 07) ══ -->
     <div class="hero">
@@ -57,7 +57,7 @@
         <div class="kicker">YOUR SAVINGS</div>
         <div class="stat-num disp" style="font-size:26px" id="stat-principal">—</div>
         <div style="font-size:13px;color:var(--muted)" id="stat-shares">0 shares</div>
-        <div class="pill-teal"><span class="d"></span>No-loss — principal protected</div>
+        <div class="pill-teal"><span class="d"></span>No-loss design goal — sim principal withdraw always works</div>
       </div>
       <div class="card">
         <div class="kicker">SESSION YIELD POOL</div>
@@ -184,7 +184,7 @@
     </div>
 
     <!-- ══ WEEKLY DRAW (screen 04 — dark, WIRED to testnet) ══ -->
-    <div class="section-label">WEEKLY DRAW · PROVABLY FAIR</div>
+    <div class="section-label">WEEKLY DRAW · TRANSPARENT INPUTS <span class="illus">not manipulation-resistant yet</span></div>
     <div class="draw">
       <div style="text-align:center">
         <span class="live"><span class="d"></span>WEEKLY DRAW · TESTNET / SIGNET · LIVE HASHES</span>
@@ -208,7 +208,7 @@
 
       <div class="fair">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.3-2.9 7.6-7 8.8C7.9 18.6 5 15.3 5 11V6l7-3z" stroke="#FFB84D" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        <span>Winners drawn from live Bitcoin <b>testnet/signet</b> block hashes (tip-1 + tip) mixed with your seed — offline model, no mainnet.</span>
+        <span>Winners drawn from live Bitcoin <b>testnet/signet</b> tip hashes mixed with your seed — transparent offline model, not manipulation-resistant (commit-reveal optional; not production crypto).</span>
       </div>
 
       <button type="button" class="btn" id="btn-draw">Draw from chain</button>

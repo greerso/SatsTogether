@@ -31,7 +31,7 @@ Source: **Claude Design** project `7b4bbce5-b885-41f1-a3ef-ef0bdaadca49`, file
 | 02 | Deposit ("Add Bitcoin") | Deposit card, 1,000 sats = 1 SatsShare, live share preview | **Yes** → `POST /api/session/deposit` |
 | — | Accrue yield | Yield-into-pool card | **Yes** → `POST /api/session/accrue` |
 | 03 | Home | Live session stats (savings, yield pool, odds est., epoch) | **Yes** → `GET /api/session` |
-| 04 | Weekly Draw (dark) | Dark draw panel, network/winners/seed, provably-fair block-hash note | **Yes** → `POST /api/session/draw` (testnet/signet tip hashes) |
+| 04 | Weekly Draw (dark) | Dark draw panel, network/winners/seed, transparent block-hash note | **Yes** → `POST /api/session/draw` (testnet/signet tip hashes) |
 | 05 | Pods | Pod card ("Diamond Hands") | illustrative — no backend, labelled |
 | 06 | Withdraw (teal) | Teal withdraw panel, full-principal note | **Yes** → `POST /api/session/withdraw` |
 | 07 | Desktop dashboard | Overall dashboard layout + "Recent draws" table | table **Yes** (session draw history); hero/pod/APY illustrative |

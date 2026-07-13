@@ -10,7 +10,7 @@ import {
   placeholderMix,
   VERSION as DRAW_VERSION,
 } from '../sim/draw.ts';
-import { ShareLedger, DEFAULT_SATS_PER_SHARE, VERSION as LEDGER_VERSION } from '../sim/ledger.ts';
+import { ShareLedger, DEFAULT_SATS_PER_SHARE, MAX_SHARE_SPACE, VERSION as LEDGER_VERSION } from '../sim/ledger.ts';
 import { MockSigner, defaultMockSigner } from '../governance/crypto.ts';
 import type { Signer } from '../governance/signer.ts';
 import { MockBitVMVerifier, BitVMVerifier } from '../bitvm/verifier.ts';
@@ -134,6 +134,14 @@ describe('sim/ledger share accounting', () => {
     assert.equal(out.principalSats, 5000n);
     assert.equal(ledger.totalShares, 0n);
     assert.equal(ledger.totalPrincipalSats, 0n);
+  });
+
+  it('deposit rejects mints above MAX_SHARE_SPACE (DoS guard)', () => {
+    const ledger = new ShareLedger();
+    // 1 share over the cap => one map entry per share would OOM; must throw first.
+    const overCap = (MAX_SHARE_SPACE + 1n) * DEFAULT_SATS_PER_SHARE;
+    assert.throws(() => ledger.deposit('whale', overCap), /share space cap/);
+    assert.equal(ledger.totalShares, 0n);
   });
 
   it('draw never allocates more than yield pool', () => {

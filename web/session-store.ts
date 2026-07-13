@@ -41,21 +41,10 @@ export function getOrCreateSession(sessionId: string | undefined): { id: string;
   return { id, state: sessions.get(id)! };
 }
 
-/** @deprecated use getOrCreateSession */
-export function getOrCreateLedger(sessionId: string | undefined) {
-  const { id, state } = getOrCreateSession(sessionId);
-  return { id, ledger: state.ledger };
-}
-
 export function resetSession(sessionId: string): SessionState {
   const state = emptySession();
   sessions.set(sessionId, state);
   return state;
-}
-
-/** @deprecated use resetSession */
-export function resetLedger(sessionId: string): ShareLedger {
-  return resetSession(sessionId).ledger;
 }
 
 export function setSessionState(sessionId: string, state: SessionState) {
