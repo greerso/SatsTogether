@@ -92,11 +92,13 @@ Thanks,
 
 ## 4. Operator checklist before sending
 
-- [ ] Fill budget / timeline in the email  
-- [ ] Set security contact in `SECURITY.md` and `docs/bug-bounty-scope.md`  
-- [ ] Confirm Coolify app is on latest `main`  
-- [ ] Decide retest round included or not  
-- [ ] (Optional) Tag a release SHA for frozen review: `git tag audit-v0.1.0-prep && git push --tags`  
+- [x] Prep package on `main`  
+- [x] Tag freeze: `audit-v0.1.0-prep` (points at prep package SHA)  
+- [x] Candidate list + per-firm drafts: `docs/auditor-candidates.md`, `docs/outreach-drafts/`  
+- [ ] Fill budget / timeline in the chosen draft  
+- [ ] Confirm security contact in `SECURITY.md`  
+- [ ] Send 1–2 personalized inquiries (Trail of Bits + Cyfrin recommended first)  
+- [ ] Log replies when they arrive  
 
 ---
 
@@ -105,3 +107,4 @@ Thanks,
 | Version | Date | Notes |
 |---------|------|-------|
 | 0.1.0 | 2026-07-12 | First send-ready outreach package |
+| 0.1.1 | 2026-07-13 | Freeze tag + firm drafts + candidates |

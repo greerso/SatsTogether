@@ -92,6 +92,7 @@ Optional future P2 slices (not required to exit): LN testnet UX, Taproot Assets 
 - [x] `docs/ops-emergency-policy.md` — pause / no stealth upgrade policy  
 - [x] Mandatory seed commit-reveal for HTTPS session draws  
 - [x] `docs/auditor-outreach.md` + root `SECURITY.md`  
+- [x] Freeze tag `audit-v0.1.0-prep` + firm shortlist/drafts  
 - [ ] Audit engagement signed  
 - [ ] Bounty funded + contact published  
 - [ ] Legal counsel review  
@@ -131,9 +132,9 @@ Raise caps, multi-source yield, pods, QF treasury — only after P4 stability + 
 
 ## Immediate next actions (ordered)
 
-1. **Send** `docs/auditor-outreach.md` to candidate firms (fill budget/timeline).  
-2. Set/confirm security contact in `SECURITY.md` (and fund bounty only after contact is live).  
-3. Tag a freeze SHA when engagement starts (`git tag audit-v0.1.0-prep`).  
+1. **Send** personalized drafts in `docs/outreach-drafts/` (see `docs/auditor-candidates.md`). Freeze tag: `audit-v0.1.0-prep`.  
+2. Confirm security contact in `SECURITY.md` (and fund bounty only after contact is live).  
+3. When SOW is signed, re-tag or note engagement SHA if code moved.  
 4. Implement real BIP-322 (or drop governance path) after interface review.  
 5. Circuit work only after challenge-game freeze checklist complete.  
 6. **Do not** start mainnet deploy or TVL marketing.

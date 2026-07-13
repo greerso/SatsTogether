@@ -2,20 +2,14 @@
 
 ## Project
 - Path: `~/dev/Bitcoin/SatsTogether`
-- Live: https://satstogether.greerso.com (Coolify `ewfwbpp6c6iit5e2noaj4gd9`)
+- Live: https://satstogether.greerso.com
+- Freeze tag: `audit-v0.1.0-prep`
 
 ## Phase status
-- P0–P2 complete
-- P3 prep complete enough to **send**: auditor-outreach + SECURITY.md + audit package
-- P3 exit still needs: signed engagement, funded bounty, legal counsel
+- P0–P2 complete; P3 prep send-ready
+- **Agent cannot send external RFPs** without SMTP + your budget/contact
+- Human: send `docs/outreach-drafts/trail-of-bits.md` + `cyfrin.md` after filling {TBD}
 
-## Your next human step
-1. Open `docs/auditor-outreach.md`
-2. Fill budget/timeline + confirm `security@greerso.com` in `SECURITY.md`
-3. Send the email template to 2–3 candidate auditors
-
-## Verify
-```bash
-./scripts/smoke-test.sh
-curl -s https://satstogether.greerso.com/health
-```
+## Next code (only if human gate waits)
+- Nothing blocking on code for P3 exit
+- Optional: engagement log template when first reply lands
