@@ -29,9 +29,10 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 const COOKIE = 'st_session';
 
-/** Simple per-IP demo throttle (in-memory, best-effort). */
-const demoHits = new Map<string, number>();
+/** Simple per-IP throttle (in-memory, best-effort). */
+const rateHits = new Map<string, number>();
 const DEMO_COOLDOWN_MS = 15_000;
+const DRAW_COOLDOWN_MS = 3_000;
 
 function clientIp(req: IncomingMessage): string {
   const xf = req.headers['x-forwarded-for'];
@@ -39,13 +40,18 @@ function clientIp(req: IncomingMessage): string {
   return req.socket.remoteAddress || 'unknown';
 }
 
-function demoAllowed(req: IncomingMessage): boolean {
+function rateAllowed(req: IncomingMessage, key: string, cooldownMs: number): boolean {
   const ip = clientIp(req);
   const now = Date.now();
-  const last = demoHits.get(ip) || 0;
-  if (now - last < DEMO_COOLDOWN_MS) return false;
-  demoHits.set(ip, now);
+  const mapKey = key + ':' + ip;
+  const last = rateHits.get(mapKey) || 0;
+  if (now - last < cooldownMs) return false;
+  rateHits.set(mapKey, now);
   return true;
+}
+
+function demoAllowed(req: IncomingMessage): boolean {
+  return rateAllowed(req, 'demo', DEMO_COOLDOWN_MS);
 }
 
 // Explicit static allowlist — no filesystem passthrough (no ../ traversal).
@@ -249,6 +255,10 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/session/draw') {
+      if (!rateAllowed(req, 'draw', DRAW_COOLDOWN_MS)) {
+        json(res, 429, { ok: false, error: 'draw cooldown — wait a few seconds' });
+        return;
+      }
       const { id, state } = sessionFrom(req);
       const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
@@ -326,7 +336,11 @@ const server = createServer(async (req, res) => {
       const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
       const account = String(body.account || '').trim();
-      const out = ledger.claim(account);
+      const amount =
+        body.amountSats === undefined || body.amountSats === null || body.amountSats === ''
+          ? undefined
+          : parseBigIntField(body.amountSats, 'amountSats');
+      const out = ledger.claim(account, amount);
       json(
         res,
         200,
@@ -334,6 +348,7 @@ const server = createServer(async (req, res) => {
           ok: true,
           sessionId: id,
           claimedSats: out.claimedSats.toString(),
+          remaining: out.remaining.toString(),
           note: 'Sim claim drain only — no Lightning/on-chain delivery',
           snapshot: snap(state),
         },
