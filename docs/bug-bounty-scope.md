@@ -51,7 +51,5 @@
 See `docs/internal-security-review-2026-07-13.md`. Remaining after follow-up hardening:
 
 - Draw seed grindability (design; not production fairness) — ST-4  
-- Expensive mint loop (bounded) — ST-7  
-- Error message leak (low) — ST-8  
 
-Fixed in follow-up: ST-3 trusted proxy, ST-5 LRU + session create rate limit, ST-6 import validation.
+Fixed in follow-up: ST-1…ST-3, ST-5…ST-8 (code). ST-4 remains design.

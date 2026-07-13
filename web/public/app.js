@@ -500,6 +500,26 @@ $('btn-export').onclick = () =>
     }
   });
 
+if ($('btn-export-csv')) {
+  $('btn-export-csv').onclick = () =>
+    withBusy($('btn-export-csv'), async () => {
+      try {
+        const res = await fetch('/api/session/export.csv', { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('CSV export failed: ' + res.status);
+        const text = await res.text();
+        const blob = new Blob([text], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'satstogether-session.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        log('Downloaded prototype CSV (not tax advice)', true);
+      } catch (e) {
+        log(String(e), false);
+      }
+    });
+}
+
 $('import-file').addEventListener('change', async (ev) => {
   const file = ev.target.files && ev.target.files[0];
   if (!file) return;

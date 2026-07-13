@@ -17,9 +17,8 @@ import { selectWinners, type Bytes32 } from './draw.ts';
 export const VERSION = '0.1.0-prototype';
 export const DEFAULT_SATS_PER_SHARE = 1000n;
 /**
- * Hard cap on total minted shares per ledger. The `ownerByIndex` map holds one
- * entry per share, so an unbounded mint (deposit or restore) is an OOM/DoS.
- * ponytail: flat per-index map, 1M-entry ceiling; switch to segment-range lookup if this bites.
+ * Hard cap on high-water share index space per ledger (nextShareIndex growth).
+ * Ownership is segment-range based (no per-index map) — deposit/withdraw are O(segments).
  */
 export const MAX_SHARE_SPACE = 1_000_000n;
 
@@ -95,8 +94,6 @@ export class ShareLedger {
   private yieldPoolSats = 0n;
   private draws: DrawRecord[] = [];
   private epoch = 0;
-  /** Map share index → account for O(1) winner lookup (sparse ok for sim). */
-  private ownerByIndex = new Map<string, AccountId>();
   /** Yield credits from draws (audit + claim drain). Not Lightning delivery. */
   private claimBalances = new Map<AccountId, bigint>();
 
@@ -130,6 +127,7 @@ export class ShareLedger {
   /**
    * Mint shares for an account. Top-up allowed: appends a new segment at the
    * high-water mark (may leave holes if other accounts minted in between).
+   * O(1) per deposit (segment append) — not O(shareCount).
    */
   deposit(account: AccountId, principalSats: bigint): Position {
     if (!account) throw new Error('account required');
@@ -144,10 +142,6 @@ export class ShareLedger {
     }
     const startIndex = this.nextShareIndex;
     const segment: ShareSegment = { startIndex, shareCount };
-
-    for (let i = 0n; i < shareCount; i++) {
-      this.ownerByIndex.set((startIndex + i).toString(), account);
-    }
     this.nextShareIndex += shareCount;
 
     const existing = this.positions.get(account);
@@ -155,7 +149,6 @@ export class ShareLedger {
       existing.segments.push(segment);
       existing.shareCount += shareCount;
       existing.principalSats += principalSats;
-      // startIndex stays first mint
       this.positions.set(account, existing);
       return clonePos(existing);
     }
@@ -196,7 +189,7 @@ export class ShareLedger {
   ): DrawRecord {
     const space = this.nextShareIndex;
     const raw = selectWinners(blockHashN, blockHashN1, userSeed, space, numWinners);
-    const liveWinners = raw.filter(idx => this.ownerByIndex.has(idx.toString()));
+    const liveWinners = raw.filter(idx => this.ownerOf(idx) !== null);
 
     const prizePool = this.yieldPoolSats;
     const n = BigInt(liveWinners.length);
@@ -208,7 +201,7 @@ export class ShareLedger {
     const byAccount: Record<string, bigint> = {};
     const winnerDetails: { index: bigint; account: AccountId }[] = [];
     for (const idx of liveWinners) {
-      const owner = this.ownerByIndex.get(idx.toString());
+      const owner = this.ownerOf(idx);
       if (!owner) continue;
       byAccount[owner] = (byAccount[owner] ?? 0n) + prizePerWinner;
       winnerDetails.push({ index: idx, account: owner });
@@ -256,9 +249,16 @@ export class ShareLedger {
     return { claimedSats: take, remaining };
   }
 
-  /** Owner of a share index, or null if burned/never minted. */
+  /** Owner of a share index via segment ranges, or null if burned/never minted. O(segments). */
   ownerOf(shareIndex: bigint): AccountId | null {
-    return this.ownerByIndex.get(shareIndex.toString()) ?? null;
+    for (const pos of this.positions.values()) {
+      for (const seg of pos.segments) {
+        if (shareIndex >= seg.startIndex && shareIndex < seg.startIndex + seg.shareCount) {
+          return pos.account;
+        }
+      }
+    }
+    return null;
   }
 
   /**
@@ -288,24 +288,14 @@ export class ShareLedger {
     if (take > pos.principalSats) throw new Error('amount exceeds principal');
 
     if (take === pos.principalSats) {
-      for (const seg of pos.segments) {
-        for (let i = 0n; i < seg.shareCount; i++) {
-          this.ownerByIndex.delete((seg.startIndex + i).toString());
-        }
-      }
       this.positions.delete(account);
       return { principalSats: take, remainingPrincipal: 0n };
     }
 
     let sharesToBurn = take / this.satsPerShare;
-    // Newest segment first
     for (let si = pos.segments.length - 1; si >= 0 && sharesToBurn > 0n; si--) {
       const seg = pos.segments[si]!;
       const burn = sharesToBurn < seg.shareCount ? sharesToBurn : seg.shareCount;
-      for (let i = 0n; i < burn; i++) {
-        const idx = seg.startIndex + seg.shareCount - 1n - i;
-        this.ownerByIndex.delete(idx.toString());
-      }
       seg.shareCount -= burn;
       sharesToBurn -= burn;
       if (seg.shareCount === 0n) {
@@ -347,8 +337,8 @@ export class ShareLedger {
   }
 
   /**
-   * Restore a ledger from a full snapshot (export/import). Rebuilds ownership map.
-   * Rejects inconsistent snapshots (overlapping segments, principal≠shares, dual owners).
+   * Restore a ledger from a full snapshot (export/import).
+   * Rejects inconsistent snapshots (overlapping segments, principal≠shares).
    */
   static restore(snap: LedgerSnapshot, satsPerShare: bigint = DEFAULT_SATS_PER_SHARE): ShareLedger {
     if (satsPerShare <= 0n) throw new Error('satsPerShare must be > 0');
@@ -368,6 +358,7 @@ export class ShareLedger {
     }));
 
     const seenAccounts = new Set<string>();
+    const allSegs: { account: string; start: bigint; end: bigint }[] = [];
     let totalSegShares = 0n;
     let maxExclusive = 0n;
 
@@ -381,8 +372,9 @@ export class ShareLedger {
       for (const seg of p.segments) {
         if (seg.shareCount <= 0n) throw new Error(`position ${p.account}: segment shareCount must be > 0`);
         if (seg.startIndex < 0n) throw new Error(`position ${p.account}: startIndex must be >= 0`);
-        segSum += seg.shareCount;
         const end = seg.startIndex + seg.shareCount;
+        allSegs.push({ account: p.account, start: seg.startIndex, end });
+        segSum += seg.shareCount;
         if (end > maxExclusive) maxExclusive = end;
       }
       if (segSum !== p.shareCount) {
@@ -405,18 +397,19 @@ export class ShareLedger {
       throw new Error('segment range exceeds nextShareIndex');
     }
 
-    for (const p of snap.positions) {
-      const pos = clonePos(p);
-      ledger.positions.set(pos.account, pos);
-      for (const seg of pos.segments) {
-        for (let i = 0n; i < seg.shareCount; i++) {
-          const key = (seg.startIndex + i).toString();
-          if (ledger.ownerByIndex.has(key)) {
-            throw new Error(`overlapping share index ${key} on import`);
-          }
-          ledger.ownerByIndex.set(key, pos.account);
+    // O(n²) segment overlap check — fine for prototype import sizes
+    for (let i = 0; i < allSegs.length; i++) {
+      for (let j = i + 1; j < allSegs.length; j++) {
+        const a = allSegs[i]!;
+        const b = allSegs[j]!;
+        if (a.start < b.end && b.start < a.end) {
+          throw new Error(`overlapping share index ${a.start < b.start ? b.start : a.start} on import`);
         }
       }
+    }
+
+    for (const p of snap.positions) {
+      ledger.positions.set(p.account, clonePos(p));
     }
 
     for (const [acct, amt] of Object.entries(snap.claimBalances || {})) {

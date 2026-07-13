@@ -164,6 +164,19 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+function publicErrorMessage(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  // Allowlist known user-facing validation / rate messages; sanitize unknowns (ST-8).
+  if (
+    /cooldown|rate limit|must be|required|exceed|multiple|no position|no claim|commitment|commit required|seed |network must|too large|not found|cap |overlapping|principal|segment|empty |duplicate|invalid|snapshot/i.test(
+      msg,
+    )
+  ) {
+    return msg.length > 200 ? msg.slice(0, 200) + '…' : msg;
+  }
+  return 'request failed';
+}
+
 function sessionFrom(req: IncomingMessage) {
   const cookies = parseCookies(req);
   const sid = cookies[COOKIE];
@@ -251,6 +264,7 @@ const server = createServer(async (req, res) => {
           '/api/session/claim',
           '/api/session/commit',
           '/api/session/export',
+          '/api/session/export.csv',
           '/api/session/import',
           '/api/testnet/draw',
         ],
@@ -481,6 +495,63 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    // Prototype tax/audit CSV — not compliance advice (see legal-framing).
+    if (req.method === 'GET' && url.pathname === '/api/session/export.csv') {
+      const { id, state } = sessionFrom(req);
+      const s = snap(state);
+      const lines: string[] = [
+        'kind,epoch,account,share_index,amount_sats,note',
+      ];
+      const escCsv = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+      for (const d of s.draws) {
+        for (const w of d.winnerDetails || []) {
+          lines.push(
+            [
+              'draw_win',
+              d.epoch,
+              escCsv(w.account || ''),
+              w.index,
+              d.prizePerWinner,
+              escCsv('sim prize credit; not tax advice'),
+            ].join(','),
+          );
+        }
+        for (const [acct, amt] of Object.entries(d.byAccount || {})) {
+          lines.push(
+            ['draw_by_account', d.epoch, escCsv(acct), '', amt, escCsv('epoch allocation total')].join(
+              ',',
+            ),
+          );
+        }
+      }
+      for (const [acct, amt] of Object.entries(s.claimBalances || {})) {
+        lines.push(
+          ['claim_balance', s.epoch, escCsv(acct), '', amt, escCsv('unclaimed sim credit')].join(','),
+        );
+      }
+      for (const p of s.positions) {
+        lines.push(
+          [
+            'position',
+            s.epoch,
+            escCsv(p.account),
+            p.startIndex,
+            p.principalSats,
+            escCsv('open principal'),
+          ].join(','),
+        );
+      }
+      const body = lines.join('\n') + '\n';
+      if (id) setSessionCookie(res, id);
+      res.writeHead(200, {
+        'content-type': 'text/csv; charset=utf-8',
+        'content-disposition': 'attachment; filename="satstogether-session.csv"',
+        'cache-control': 'no-store',
+      });
+      res.end(body);
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/session/import') {
       if (!rateAllowed(req, 'import', DRAW_COOLDOWN_MS)) {
         json(res, 429, { ok: false, error: 'import cooldown — wait a few seconds' });
@@ -670,7 +741,7 @@ const server = createServer(async (req, res) => {
 
     json(res, 404, { ok: false, error: 'not found' });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = publicErrorMessage(e);
     if (/cooldown|rate limit/i.test(msg)) {
       json(res, 429, { ok: false, error: msg });
       return;
