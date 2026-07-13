@@ -42,6 +42,8 @@ export interface Position {
 export interface DrawRecord {
   epoch: number;
   winners: bigint[];
+  /** Frozen at draw time: index → account (survives later withdraw). */
+  winnerDetails: { index: bigint; account: AccountId }[];
   /** Per live winner share of the pool this epoch (floor division). */
   prizePerWinner: bigint;
   /** Yield pool size before allocation. */
@@ -51,6 +53,11 @@ export interface DrawRecord {
    * Not delivered to accounts yet — sim audit sink only (claim balances = future work).
    */
   allocated: bigint;
+  /**
+   * Per-account allocation totals this epoch (sum of prizePerWinner for each
+   * live winning share owned by the account). Still audit-only — not claimable balances.
+   */
+  byAccount: Record<string, bigint>;
 }
 
 export interface LedgerSnapshot {
@@ -184,15 +191,30 @@ export class ShareLedger {
     this.yieldPoolSats -= allocated;
 
     this.epoch += 1;
+    const byAccount: Record<string, bigint> = {};
+    const winnerDetails: { index: bigint; account: AccountId }[] = [];
+    for (const idx of liveWinners) {
+      const owner = this.ownerByIndex.get(idx.toString());
+      if (!owner) continue;
+      byAccount[owner] = (byAccount[owner] ?? 0n) + prizePerWinner;
+      winnerDetails.push({ index: idx, account: owner });
+    }
     const rec: DrawRecord = {
       epoch: this.epoch,
       winners: liveWinners,
+      winnerDetails,
       prizePerWinner,
       yieldAvailable: prizePool,
       allocated,
+      byAccount,
     };
     this.draws.push(rec);
-    return { ...rec, winners: [...liveWinners] };
+    return {
+      ...rec,
+      winners: [...liveWinners],
+      winnerDetails: winnerDetails.map(w => ({ ...w })),
+      byAccount: { ...byAccount },
+    };
   }
 
   /** Owner of a share index, or null if burned/never minted. */
@@ -232,7 +254,12 @@ export class ShareLedger {
       yieldPoolSats: this.yieldPoolSats,
       nextShareIndex: this.nextShareIndex,
       positions: [...this.positions.values()].map(clonePos),
-      draws: this.draws.map(d => ({ ...d, winners: [...d.winners] })),
+      draws: this.draws.map(d => ({
+        ...d,
+        winners: [...d.winners],
+        winnerDetails: d.winnerDetails.map(w => ({ ...w })),
+        byAccount: { ...d.byAccount },
+      })),
       epoch: this.epoch,
     };
   }

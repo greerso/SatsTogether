@@ -154,6 +154,9 @@ Production: amount must come from `YieldProofVerifier.isValidYieldProof` + settl
 - `prizePerWinner = floor(yieldPool / liveWinnerCount)` (0 if none).
 - `allocated = prizePerWinner * liveWinnerCount` (removed from pool into `DrawRecord` audit sink).
 - `yieldPool -= allocated` (remainder `yieldPool % liveCount` stays).
+- `byAccount[owner] += prizePerWinner` for each live winning index — per-account
+  allocation totals, invariant `sum(byAccount) == allocated`. **Audit-only**, same
+  as `allocated`: not a claimable balance.
 - Record `DrawRecord`. **No per-account claim balance yet** — allocated ≠ paid to user.
 
 **Production requirements (not met)**

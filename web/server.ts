@@ -224,7 +224,7 @@ const server = createServer(async (req, res) => {
         const chain = await fetchAdjacentBlockHashes({ network, timeoutMs: 15_000 });
         const seed = parseUserSeed(userSeed);
         const draw = ledger.draw(chain.blockHashN, chain.blockHashN1, seed, numWinners);
-        const winnerDetails = ledger.winnersDetail(draw.winners).map(w => ({
+        const winnerDetails = draw.winnerDetails.map(w => ({
           index: w.index.toString(),
           account: w.account,
         }));
@@ -244,6 +244,9 @@ const server = createServer(async (req, res) => {
               epoch: draw.epoch,
               winners: draw.winners.map(String),
               winnerDetails,
+              byAccount: Object.fromEntries(
+                Object.entries(draw.byAccount).map(([k, v]) => [k, v.toString()]),
+              ),
               prizePerWinner: draw.prizePerWinner.toString(),
               yieldAvailable: draw.yieldAvailable.toString(),
               allocated: draw.allocated.toString(),
@@ -299,7 +302,7 @@ const server = createServer(async (req, res) => {
           seed,
           Number.isInteger(numWinners) && numWinners >= 0 ? numWinners : 3,
         );
-        const winnerDetails = ledger.winnersDetail(draw.winners).map(w => ({
+        const winnerDetails = draw.winnerDetails.map(w => ({
           index: w.index.toString(),
           account: w.account,
         }));
@@ -327,6 +330,9 @@ const server = createServer(async (req, res) => {
               epoch: draw.epoch,
               winners: draw.winners.map(String),
               winnerDetails,
+              byAccount: Object.fromEntries(
+                Object.entries(draw.byAccount).map(([k, v]) => [k, v.toString()]),
+              ),
               prizePerWinner: draw.prizePerWinner.toString(),
               yieldAvailable: draw.yieldAvailable.toString(),
               allocated: draw.allocated.toString(),
