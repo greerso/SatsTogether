@@ -257,7 +257,11 @@ const server = createServer(async (req, res) => {
       const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
       const account = String(body.account || '').trim();
-      const out = ledger.withdraw(account);
+      const amount =
+        body.principalSats === undefined || body.principalSats === null || body.principalSats === ''
+          ? undefined
+          : parseBigIntField(body.principalSats, 'principalSats', { min: 1n });
+      const out = ledger.withdraw(account, amount);
       json(
         res,
         200,
@@ -265,6 +269,7 @@ const server = createServer(async (req, res) => {
           ok: true,
           sessionId: id,
           principalSats: out.principalSats.toString(),
+          remainingPrincipal: out.remainingPrincipal.toString(),
           snapshot: snap(state),
         },
         id,

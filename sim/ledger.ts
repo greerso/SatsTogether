@@ -269,21 +269,59 @@ export class ShareLedger {
   }
 
   /**
-   * Withdraw full position: return principal, burn all segments.
-   * Draw allocations are epoch records only; withdraw does not touch them.
-   * Remaining yield stays in the pool.
+   * Withdraw principal (full or partial).
+   * Partial amount must be a multiple of satsPerShare (reject dust/rounding).
+   * Burns shares from newest segments first (LIFO). Claim balances untouched.
    */
-  withdraw(account: AccountId): { principalSats: bigint } {
+  withdraw(
+    account: AccountId,
+    amountSats?: bigint,
+  ): { principalSats: bigint; remainingPrincipal: bigint } {
     const pos = this.positions.get(account);
     if (!pos) throw new Error('no position');
 
-    for (const seg of pos.segments) {
-      for (let i = 0n; i < seg.shareCount; i++) {
-        this.ownerByIndex.delete((seg.startIndex + i).toString());
+    const take = amountSats === undefined ? pos.principalSats : amountSats;
+    if (take <= 0n) throw new Error('principalSats must be > 0');
+    if (take % this.satsPerShare !== 0n) {
+      throw new Error(`principalSats must be a multiple of satsPerShare (${this.satsPerShare})`);
+    }
+    if (take > pos.principalSats) throw new Error('amount exceeds principal');
+
+    if (take === pos.principalSats) {
+      for (const seg of pos.segments) {
+        for (let i = 0n; i < seg.shareCount; i++) {
+          this.ownerByIndex.delete((seg.startIndex + i).toString());
+        }
+      }
+      this.positions.delete(account);
+      return { principalSats: take, remainingPrincipal: 0n };
+    }
+
+    let sharesToBurn = take / this.satsPerShare;
+    // Newest segment first
+    for (let si = pos.segments.length - 1; si >= 0 && sharesToBurn > 0n; si--) {
+      const seg = pos.segments[si]!;
+      const burn = sharesToBurn < seg.shareCount ? sharesToBurn : seg.shareCount;
+      for (let i = 0n; i < burn; i++) {
+        const idx = seg.startIndex + seg.shareCount - 1n - i;
+        this.ownerByIndex.delete(idx.toString());
+      }
+      seg.shareCount -= burn;
+      sharesToBurn -= burn;
+      if (seg.shareCount === 0n) {
+        pos.segments.splice(si, 1);
       }
     }
-    this.positions.delete(account);
-    return { principalSats: pos.principalSats };
+
+    pos.principalSats -= take;
+    pos.shareCount -= take / this.satsPerShare;
+    if (pos.segments.length === 0 || pos.shareCount === 0n) {
+      this.positions.delete(account);
+      return { principalSats: take, remainingPrincipal: 0n };
+    }
+    pos.startIndex = pos.segments[0]!.startIndex;
+    this.positions.set(account, pos);
+    return { principalSats: take, remainingPrincipal: pos.principalSats };
   }
 
   snapshot(): LedgerSnapshot {

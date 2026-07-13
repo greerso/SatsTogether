@@ -179,8 +179,10 @@ Production: amount must come from `YieldProofVerifier.isValidYieldProof` + settl
 ### 3.5 Withdraw principal
 
 **Preconditions:** open position for account  
-**Effects:** burn all shares; return `principalSats`; remove ownership map entries  
-**Invariant:** withdraw success does not depend on win/loss history.
+**Effects:**  
+- Full withdraw (default): burn all segments; return principal  
+- Partial: `amountSats` multiple of `SATS_PER_SHARE`, ≤ principal; burn **newest shares first** (LIFO segments); leave remainder position  
+**Invariant:** withdraw success does not depend on win/loss history. Claim balances unchanged.
 
 ### 3.6 Pods (unimplemented)
 

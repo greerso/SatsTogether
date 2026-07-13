@@ -20,6 +20,9 @@
     <span>Ephemeral in-memory session. Draws use <b>testnet/signet</b> block hashes only.</span>
   </div>
 
+  <!-- Fixed status toast — latest action result, visible regardless of scroll (aria-live for SR). -->
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
   <main class="shell">
     <!-- ══ BRAND + WELCOME (screen 01) ══ -->
     <div class="brand">
@@ -113,7 +116,7 @@
           </div>
           <div class="note teal">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.3-2.9 7.6-7 8.8C7.9 18.6 5 15.3 5 11V6l7-3z" stroke="#0E9E8E" stroke-width="2" stroke-linejoin="round"/><path d="M9 11.5l2 2 4-4" stroke="#0E9E8E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span><b>No-loss guarantee.</b> Withdraw your full principal whenever you like. Only yield feeds the prizes.</span>
+            <span><b>No-loss by design.</b> In this sim you withdraw your full principal whenever you like — only yield feeds the prizes.</span>
           </div>
           <button type="button" class="btn" id="btn-deposit">
             <svg width="15" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M13 2L3 14h7l-1 8L21 10h-7l-1-8z"/></svg>
@@ -229,11 +232,12 @@
       </div>
       <div style="padding:20px 26px 24px;background:#fff">
         <label>Account id <input id="wd-account" value="alice" /></label>
+        <label>Amount sats (blank = full; ×1000) <input id="wd-amount" type="number" min="1000" step="1000" placeholder="full principal" /></label>
         <div class="note warn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#F4552E" stroke-width="2"/><path d="M12 7v6M12 16.5v.5" stroke="#F4552E" stroke-width="2" stroke-linecap="round"/></svg>
-          <span>Withdrawing your full balance removes you from this week's draw.</span>
+          <span>Partial withdraw burns newest shares first. Full withdraw removes you from the draw pool.</span>
         </div>
-        <button type="button" class="btn ink" id="btn-withdraw">Withdraw all principal</button>
+        <button type="button" class="btn ink" id="btn-withdraw">Withdraw principal</button>
       </div>
     </div>
 

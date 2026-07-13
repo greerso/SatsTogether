@@ -316,6 +316,21 @@ describe('sim/ledger share accounting', () => {
     }
   });
 
+  it('partial withdraw burns newest shares; rejects non-multiples', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 5000n);
+    assert.throws(() => ledger.withdraw('alice', 1500n), /multiple/);
+    const out = ledger.withdraw('alice', 2000n);
+    assert.equal(out.principalSats, 2000n);
+    assert.equal(out.remainingPrincipal, 3000n);
+    assert.equal(ledger.totalShares, 3n);
+    assert.equal(ledger.ownerOf(0n), 'alice');
+    assert.equal(ledger.ownerOf(4n), null); // burned from end
+    const full = ledger.withdraw('alice');
+    assert.equal(full.principalSats, 3000n);
+    assert.equal(full.remainingPrincipal, 0n);
+  });
+
   it('winnerDetails stay frozen after withdraw', () => {
     const ledger = new ShareLedger();
     ledger.deposit('alice', 1000n);
