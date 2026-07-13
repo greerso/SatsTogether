@@ -1,6 +1,9 @@
 /**
  * In-memory multi-session store for the prototype web UI.
  * Ephemeral: restarts wipe state. Not custody. Not multi-instance durable.
+ *
+ * Eviction: LRU via Map insertion order (touch on access).
+ * New-session rate limit is enforced in web/server.ts (ST-5).
  */
 
 import { createHash, randomUUID } from 'node:crypto';
@@ -21,34 +24,72 @@ export interface SessionState {
   seedCommit?: SeedCommit;
 }
 
+/** Map insertion order = LRU: first key is least recently used. */
 const sessions = new Map<string, SessionState>();
-const MAX_SESSIONS = 500;
+
+export const MAX_SESSIONS = Math.max(
+  10,
+  Number(process.env.SESSION_MAX || 500) || 500,
+);
 
 function emptySession(): SessionState {
   return { ledger: new ShareLedger() };
 }
 
+/** Move id to most-recently-used end. */
+function touch(id: string, state: SessionState) {
+  sessions.delete(id);
+  sessions.set(id, state);
+}
+
+function evictOldest() {
+  const oldest = sessions.keys().next().value;
+  if (oldest !== undefined) sessions.delete(oldest);
+}
+
+export function hasSession(sessionId: string | undefined): boolean {
+  return typeof sessionId === 'string' && sessionId.length > 0 && sessions.has(sessionId);
+}
+
+export function sessionCount(): number {
+  return sessions.size;
+}
+
+/** Test helper — clear all sessions. */
+export function clearAllSessionsForTests() {
+  sessions.clear();
+}
+
+/** Test helper — LRU key order (oldest first). */
+export function sessionIdsOldestFirstForTests(): string[] {
+  return [...sessions.keys()];
+}
+
 export function getOrCreateSession(sessionId: string | undefined): { id: string; state: SessionState } {
-  let id = sessionId && sessions.has(sessionId) ? sessionId : '';
-  if (!id) {
-    if (sessions.size >= MAX_SESSIONS) {
-      const first = sessions.keys().next().value;
-      if (first) sessions.delete(first);
-    }
-    id = randomUUID();
-    sessions.set(id, emptySession());
+  if (sessionId && sessions.has(sessionId)) {
+    const state = sessions.get(sessionId)!;
+    touch(sessionId, state);
+    return { id: sessionId, state };
   }
-  return { id, state: sessions.get(id)! };
+
+  if (sessions.size >= MAX_SESSIONS) {
+    evictOldest();
+  }
+
+  const id = randomUUID();
+  const state = emptySession();
+  sessions.set(id, state);
+  return { id, state };
 }
 
 export function resetSession(sessionId: string): SessionState {
   const state = emptySession();
-  sessions.set(sessionId, state);
+  touch(sessionId, state);
   return state;
 }
 
 export function setSessionState(sessionId: string, state: SessionState) {
-  sessions.set(sessionId, state);
+  touch(sessionId, state);
 }
 
 export function sha256Hex(text: string): string {

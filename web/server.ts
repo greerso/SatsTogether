@@ -20,6 +20,7 @@ import {
   clearSeedCommit,
   assertSeedReveal,
   seedCommitRequired,
+  hasSession,
   ledgerFromSnapshotJson,
   setSessionState,
   type SnapshotJson,
@@ -42,6 +43,8 @@ const TRUST_PROXY_HOPS = Math.max(1, Number(process.env.TRUST_PROXY_HOPS || 1) |
 const rateHits = new Map<string, number>();
 const DEMO_COOLDOWN_MS = 15_000;
 const DRAW_COOLDOWN_MS = 3_000;
+/** New anonymous sessions per IP (ST-5). Existing cookie sessions unlimited. */
+const SESSION_CREATE_COOLDOWN_MS = 2_000;
 // Bound rateHits memory: an attacker rotating X-Forwarded-For mints a new key
 // per request, so cap the map and prune expired (>= longest cooldown) entries.
 const RATE_MAP_MAX = 10_000;
@@ -163,7 +166,14 @@ async function readBody(req: IncomingMessage): Promise<string> {
 
 function sessionFrom(req: IncomingMessage) {
   const cookies = parseCookies(req);
-  return getOrCreateSession(cookies[COOKIE]);
+  const sid = cookies[COOKIE];
+  // Rate-limit only brand-new sessions (cookie missing or unknown id).
+  if (!hasSession(sid)) {
+    if (!rateAllowed(req, 'session-new', SESSION_CREATE_COOLDOWN_MS)) {
+      throw new Error('session create cooldown — wait a moment and retry');
+    }
+  }
+  return getOrCreateSession(sid);
 }
 
 function snap(state: { ledger: import('./session-store.ts').SessionState['ledger']; seedCommit?: import('./session-store.ts').SeedCommit }) {
@@ -661,6 +671,10 @@ const server = createServer(async (req, res) => {
     json(res, 404, { ok: false, error: 'not found' });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    if (/cooldown|rate limit/i.test(msg)) {
+      json(res, 429, { ok: false, error: msg });
+      return;
+    }
     json(res, 400, { ok: false, error: msg });
   }
 });

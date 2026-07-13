@@ -51,8 +51,7 @@
 See `docs/internal-security-review-2026-07-13.md`. Remaining after follow-up hardening:
 
 - Draw seed grindability (design; not production fairness) — ST-4  
-- Session eviction griefing — ST-5  
 - Expensive mint loop (bounded) — ST-7  
 - Error message leak (low) — ST-8  
 
-Fixed in follow-up: ST-3 trusted proxy IP, ST-6 import validation.
+Fixed in follow-up: ST-3 trusted proxy, ST-5 LRU + session create rate limit, ST-6 import validation.
