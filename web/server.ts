@@ -35,6 +35,12 @@ const REQUIRE_COMMIT = seedCommitRequired(PUBLIC_URL);
 const rateHits = new Map<string, number>();
 const DEMO_COOLDOWN_MS = 15_000;
 const DRAW_COOLDOWN_MS = 3_000;
+// Bound rateHits memory: an attacker rotating X-Forwarded-For mints a new key
+// per request, so cap the map and prune expired (>= longest cooldown) entries.
+const RATE_MAP_MAX = 10_000;
+// Cap request bodies. Snapshots are small; reject oversized bodies before we
+// buffer them (unauthenticated /import is otherwise a memory-exhaustion vector).
+const MAX_BODY_BYTES = 1_000_000;
 
 // Trust-boundary caps: unauthenticated callers must not pass unbounded numeric
 // params. selectWinners' attempt budget scales with numWinners*shares, and the
@@ -54,6 +60,13 @@ function rateAllowed(req: IncomingMessage, key: string, cooldownMs: number): boo
   const mapKey = key + ':' + ip;
   const last = rateHits.get(mapKey) || 0;
   if (now - last < cooldownMs) return false;
+  if (rateHits.size >= RATE_MAP_MAX) {
+    // Deleting entries past the longest cooldown only resets an already-expired
+    // throttle, so this is semantically safe and keeps the map bounded.
+    for (const [k, t] of rateHits) {
+      if (now - t >= DEMO_COOLDOWN_MS) rateHits.delete(k);
+    }
+  }
   rateHits.set(mapKey, now);
   return true;
 }
@@ -110,7 +123,13 @@ function json(res: ServerResponse, status: number, body: unknown, sessionId?: st
 
 async function readBody(req: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
-  for await (const c of req) chunks.push(c as Buffer);
+  let size = 0;
+  for await (const c of req) {
+    const chunk = c as Buffer;
+    size += chunk.length;
+    if (size > MAX_BODY_BYTES) throw new Error('request body too large');
+    chunks.push(chunk);
+  }
   return Buffer.concat(chunks).toString('utf8');
 }
 
@@ -174,10 +193,12 @@ const server = createServer(async (req, res) => {
           'Ephemeral in-memory sessions',
           'Offline draw model (placeholder_mix)',
           REQUIRE_COMMIT
-            ? 'Session draws require seed commit-reveal'
+            ? 'Seed commit-reveal required on HTTPS (session integrity only — not manipulation-resistant fairness)'
             : 'Seed commit optional (REQUIRE_SEED_COMMIT=0)',
+          'Draw entropy is offline placeholder_mix; tip hashes are public (grindable seed)',
           'Claim credits are sim-only (not Lightning delivery)',
           'No real-funds / vaults / BitVM2 circuit',
+          'Internal Claude review 2026-07-13 — not an external audit',
         ],
         endpoints: [
           '/',
@@ -423,6 +444,10 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/session/import') {
+      if (!rateAllowed(req, 'import', DRAW_COOLDOWN_MS)) {
+        json(res, 429, { ok: false, error: 'import cooldown — wait a few seconds' });
+        return;
+      }
       const { id } = sessionFrom(req);
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
       const raw = (body.snapshot || body) as SnapshotJson;

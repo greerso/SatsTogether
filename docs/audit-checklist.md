@@ -23,9 +23,17 @@ Mapping columns: **Done** = implemented & verified · **Design** = written only 
 - [x] `docs/bitvm-challenge-game.md` — challenge game design draft  
 - [x] `docs/bug-bounty-scope.md` — unfunded bounty scope  
 - [x] `governance/bip322-signer.ts` — interface stub (throws; not real crypto)  
-- [ ] External audit engagement  
+- [x] `docs/internal-security-review-2026-07-13.md` — **Claude internal review (2026-07-13)**; NOT a substitute for external audit  
+- [ ] External audit engagement — **DEFERRED (zero budget)**; still required for P3 exit  
 - [ ] Funded bug bounty  
 - [ ] Legal counsel review of prize-linked framing  
+
+**Paid external audit: DEFERRED (zero budget).** As a partial, honest
+stopgap a Claude internal security review was completed **2026-07-13**
+(`docs/internal-security-review-2026-07-13.md`): 2 memory-DoS issues fixed,
+6 open (draw manipulability, XFF-trust rate-limit bypass, others). This is an
+internal model review, **not** an external or paid audit, and **P3 exit remains
+unmet** — a real external audit + funded bounty are still mandatory.
 
 ## Auditor sign-off
 
