@@ -3,17 +3,21 @@
 ## Project
 - Path: `~/dev/Bitcoin/SatsTogether`
 - Remote: `https://github.com/greerso/SatsTogether.git`
+- Live: https://satstogether.greerso.com (Coolify `ewfwbpp6c6iit5e2noaj4gd9`)
 
 ## Done
-- Phase 0–1 complete (spec human-reviewed)
-- Phase 2 slice: `testnet/` + `npm run testnet:draw` + runbook in `docs/testnet-guide.md`
+- Phase 0–2 offline + testnet draw slice
+- Flow UI + live session ledger
+- Overnight: multi-segment deposit top-up, demo walkthrough API/UI, winner→account annotations
 
 ## Next
-1. Optional second-person live testnet check
-2. Phase 3 only after deliberate audit scope — do not overclaim P2
+- Optional claim-balance design (still audit sink only)
+- GitHub webhook auto-deploy on Coolify
+- Pod real mechanics when ready
 
-## Workflow
-- Always: commit → PR → code-review → fix → squash-merge
-- Local gate: `export PATH="$HOME/.cargo/bin:$PATH" && ./scripts/smoke-test.sh`
-- Live soft: `./scripts/testnet-check.sh`
-- End of turn: always suggest next step
+## Verify
+```bash
+npm test
+./scripts/smoke-test.sh
+curl -s https://satstogether.greerso.com/health
+```

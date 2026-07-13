@@ -73,10 +73,12 @@
         <div style="font-size:13px;color:var(--muted)">draws run this session</div>
       </div>
     </div>
-    <div style="margin-top:12px;display:flex;gap:10px">
+    <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+      <button type="button" class="btn" style="margin-top:0;width:auto;padding:10px 16px" id="btn-demo">Run demo walkthrough</button>
       <button type="button" class="btn ghost" style="margin-top:0;width:auto;padding:10px 16px" id="btn-refresh">Refresh</button>
       <button type="button" class="btn ghost" style="margin-top:0;width:auto;padding:10px 16px" id="btn-reset">Reset session</button>
     </div>
+    <p class="muted" style="margin:8px 0 0;font-size:13px">Demo resets this session, deposits alice/bob/carol (with alice top-up), accrues yield, and draws from live testnet tip hashes.</p>
 
     <div class="cols" style="margin-top:24px">
       <!-- ── LEFT COLUMN ── -->

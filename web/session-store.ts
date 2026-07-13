@@ -13,7 +13,6 @@ export function getOrCreateLedger(sessionId: string | undefined): { id: string; 
   let id = sessionId && sessions.has(sessionId) ? sessionId : '';
   if (!id) {
     if (sessions.size >= MAX_SESSIONS) {
-      // drop oldest (Map insertion order)
       const first = sessions.keys().next().value;
       if (first) sessions.delete(first);
     }
@@ -43,10 +42,18 @@ export function snapshotJson(ledger: ShareLedger) {
       startIndex: p.startIndex.toString(),
       shareCount: p.shareCount.toString(),
       principalSats: p.principalSats.toString(),
+      segments: p.segments.map(seg => ({
+        startIndex: seg.startIndex.toString(),
+        shareCount: seg.shareCount.toString(),
+      })),
     })),
     draws: s.draws.map(d => ({
       epoch: d.epoch,
       winners: d.winners.map(String),
+      winnerDetails: ledger.winnersDetail(d.winners).map(w => ({
+        index: w.index.toString(),
+        account: w.account,
+      })),
       prizePerWinner: d.prizePerWinner.toString(),
       yieldAvailable: d.yieldAvailable.toString(),
       allocated: d.allocated.toString(),
