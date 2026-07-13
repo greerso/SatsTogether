@@ -2,22 +2,22 @@
 
 ## Project
 - Path: `~/dev/Bitcoin/SatsTogether`
-- Remote: `https://github.com/greerso/SatsTogether.git`
 - Live: https://satstogether.greerso.com (Coolify `ewfwbpp6c6iit5e2noaj4gd9`)
+- Remote: public `greerso/SatsTogether`
 
-## Done
-- Phase 0–2 offline + testnet draw slice
-- Flow UI + live session ledger
-- Overnight: multi-segment deposit top-up, demo walkthrough API/UI, winner→account annotations
+## Done (recent)
+- Flow UI + session ledger + testnet draw
+- Top-up segments, demo walkthrough, byAccount, frozen winners
+- Claim balances (sim), seed commit-reveal, export/import (#16)
 
-## Next
-- Optional claim-balance design (still audit sink only)
-- GitHub webhook auto-deploy on Coolify
-- Pod real mechanics when ready
+## Next ideas
+- Partial withdraw / partial claim amounts
+- Real pod mechanics
+- Coolify GitHub auto-deploy webhook
+- Rate-limit remaining mutating APIs
 
 ## Verify
 ```bash
 npm test
-./scripts/smoke-test.sh
 curl -s https://satstogether.greerso.com/health
 ```
