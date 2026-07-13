@@ -1,5 +1,5 @@
 /**
- * Session store unit tests (ephemeral ledger map + commit/export).
+ * Session store unit tests (ephemeral ledger map + commit/export + LRU).
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,6 +12,10 @@ import {
   seedCommitRequired,
   sha256Hex,
   ledgerFromSnapshotJson,
+  clearAllSessionsForTests,
+  sessionIdsOldestFirstForTests,
+  MAX_SESSIONS,
+  hasSession,
 } from '../web/session-store.ts';
 import { sampleHashes } from '../sim/draw.ts';
 
@@ -22,12 +26,34 @@ describe('web/session-store', () => {
     assert.equal(a.state.ledger.totalShares, 0n);
   });
 
-  it('reuses session id', () => {
+  it('reuses session id and LRU-touches', () => {
+    clearAllSessionsForTests();
     const a = getOrCreateSession(undefined);
     a.state.ledger.deposit('bob', 1000n);
+    const mid = getOrCreateSession(undefined);
     const b = getOrCreateSession(a.id);
     assert.equal(b.id, a.id);
     assert.equal(b.state.ledger.totalShares, 1n);
+    // a should be MRU (last)
+    const order = sessionIdsOldestFirstForTests();
+    assert.equal(order[order.length - 1], a.id);
+    assert.ok(order.includes(mid.id));
+  });
+
+  it('LRU evicts oldest when at capacity', () => {
+    clearAllSessionsForTests();
+    const ids: string[] = [];
+    for (let i = 0; i < MAX_SESSIONS; i++) {
+      ids.push(getOrCreateSession(undefined).id);
+    }
+    assert.equal(sessionIdsOldestFirstForTests().length, MAX_SESSIONS);
+    const oldest = ids[0]!;
+    assert.equal(hasSession(oldest), true);
+    getOrCreateSession(ids[1]);
+    const neu = getOrCreateSession(undefined);
+    assert.equal(hasSession(oldest), false);
+    assert.equal(hasSession(neu.id), true);
+    assert.equal(sessionIdsOldestFirstForTests().length, MAX_SESSIONS);
   });
 
   it('reset clears ledger for id', () => {
@@ -91,7 +117,6 @@ describe('web/session-store', () => {
     state.ledger.deposit(evil, 1000n);
     const s = snapshotJson(state.ledger);
     assert.equal(s.positions[0]?.account, evil);
-    // UI must esc(); raw snapshot still holds the string — document contract.
     assert.ok(s.positions[0]?.account.includes('<'));
   });
 });
