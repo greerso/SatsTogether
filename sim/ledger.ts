@@ -231,14 +231,20 @@ export class ShareLedger {
 
   /**
    * Drain claim credit for an account (sim only).
+   * Optional partial amount; default = full balance.
    * Marks yield as "claimed" in the mock — no Lightning / on-chain send.
    */
-  claim(account: AccountId): { claimedSats: bigint } {
+  claim(account: AccountId, amountSats?: bigint): { claimedSats: bigint; remaining: bigint } {
     if (!account) throw new Error('account required');
     const bal = this.claimBalances.get(account) ?? 0n;
     if (bal <= 0n) throw new Error('no claim balance');
-    this.claimBalances.set(account, 0n);
-    return { claimedSats: bal };
+    let take = amountSats === undefined ? bal : amountSats;
+    if (take <= 0n) throw new Error('amountSats must be > 0');
+    if (take > bal) throw new Error('amountSats exceeds claim balance');
+    const remaining = bal - take;
+    if (remaining === 0n) this.claimBalances.delete(account);
+    else this.claimBalances.set(account, remaining);
+    return { claimedSats: take, remaining };
   }
 
   /** Owner of a share index, or null if burned/never minted. */

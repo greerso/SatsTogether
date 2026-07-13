@@ -408,12 +408,18 @@ $('btn-draw').onclick = () =>
 $('btn-claim').onclick = () =>
   withBusy($('btn-claim'), async () => {
     try {
+      const amountRaw = $('claim-amount') ? $('claim-amount').value.trim() : '';
+      const payload = { account: $('claim-account').value };
+      if (amountRaw) payload.amountSats = amountRaw;
       const body = await api('/api/session/claim', {
         method: 'POST',
-        body: JSON.stringify({ account: $('claim-account').value }),
+        body: JSON.stringify(payload),
       });
       render(body.snapshot);
-      log('Claimed ' + fmt(body.claimedSats) + ' sats (sim only)', true);
+      log(
+        'Claimed ' + fmt(body.claimedSats) + ' sats (sim); remaining ' + fmt(body.remaining),
+        true,
+      );
     } catch (e) {
       log(String(e), false);
     }

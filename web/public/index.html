@@ -243,6 +243,7 @@
       <p style="margin:0 0 8px;font-size:14px;color:var(--muted)">Draws credit <b>claimBalances</b> (yield only). Claim drains the mock ledger — <span class="illus">not Lightning</span>.</p>
       <div id="claims" style="color:var(--muted);font-size:14px;margin-bottom:10px">No claim credits</div>
       <label>Account id <input id="claim-account" value="alice" /></label>
+      <label>Amount sats (blank = full) <input id="claim-amount" type="number" min="1" placeholder="full balance" /></label>
       <button type="button" class="btn teal" id="btn-claim">Claim yield (sim)</button>
     </div>
 

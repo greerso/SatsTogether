@@ -291,6 +291,23 @@ describe('sim/ledger share accounting', () => {
     assert.equal(restored.claimBalance('bob'), ledger.claimBalance('bob'));
   });
 
+  it('partial claim leaves remainder', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 1000n);
+    ledger.accrueYield(100n);
+    const [a, b, c] = sampleHashes();
+    const rec = ledger.draw(a, b, c, 1);
+    if (rec.allocated > 1n && rec.byAccount.alice) {
+      const half = rec.byAccount.alice / 2n;
+      if (half > 0n) {
+        const out = ledger.claim('alice', half);
+        assert.equal(out.claimedSats, half);
+        assert.equal(out.remaining, rec.byAccount.alice - half);
+        assert.equal(ledger.claimBalance('alice'), out.remaining);
+      }
+    }
+  });
+
   it('winnerDetails stay frozen after withdraw', () => {
     const ledger = new ShareLedger();
     ledger.deposit('alice', 1000n);
