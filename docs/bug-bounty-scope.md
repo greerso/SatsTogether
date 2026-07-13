@@ -46,8 +46,13 @@
 - PGP: **TBD**  
 - Bounty wallet: **TBD — do not send funds until published**  
 
-## Document control
+## Known open items from internal review (2026-07-13)
 
-| Version | Date | Notes |
-|---------|------|-------|
-| 0.1.0-draft | 2026-07-12 | Unfunded scope draft for Phase 3 prep |
+See `docs/internal-security-review-2026-07-13.md`:
+
+- XFF-based rate-limit bypass / explorer amplification  
+- Draw seed grindability (design; not production fairness)  
+- Session eviction griefing  
+- Import snapshot consistency  
+
+These remain in scope for a future funded program.

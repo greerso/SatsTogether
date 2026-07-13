@@ -93,11 +93,17 @@ Optional future P2 slices (not required to exit): LN testnet UX, Taproot Assets 
 - [x] Mandatory seed commit-reveal for HTTPS session draws  
 - [x] `docs/auditor-outreach.md` + root `SECURITY.md`  
 - [x] Freeze tag `audit-v0.1.0-prep` + firm shortlist/drafts  
-- [ ] Audit engagement signed  
+- [x] Claude internal security review — 2026-07-13 (`docs/internal-security-review-2026-07-13.md`); **NOT** an external/paid audit  
+- [ ] Audit engagement signed — **paid external audit DEFERRED (zero budget)**  
 - [ ] Bounty funded + contact published  
 - [ ] Legal counsel review  
 
-### Exit criteria (not met)
+> **Paid external audit: DEFERRED (zero budget).** A Claude internal review
+> (2026-07-13) was done as an honest stopgap — 2 memory-DoS issues fixed, 6 open
+> (incl. draw manipulability). It is an internal model review, not external
+> assurance, and **does not satisfy P3 exit**.
+
+### Exit criteria (not met — external audit still required)
 
 - [ ] Audit report(s) with criticals fixed  
 - [ ] Checklist items either done or deferred with reason **and** external review accepted  
