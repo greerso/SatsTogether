@@ -15,10 +15,23 @@ function esc(s) {
 }
 const AVATAR_COLORS = ['#FFB84D', '#FFCE8A', '#FFE0B0', '#F4552E', '#12A594', '#F7931A'];
 
+let toastTimer;
 function log(msg, ok) {
   const t = new Date().toISOString().slice(11, 19);
   logEl.textContent = '[' + t + '] ' + msg + '\n' + logEl.textContent;
   logEl.className = ok === false ? 'err' : ok === true ? 'ok' : '';
+  // Mirror the latest message into a fixed, always-visible toast. Only the
+  // single latest string lives here, so aria-live announces just that (the
+  // #log node holds full history and must NOT be a live region).
+  const toastEl = $('toast');
+  if (toastEl) {
+    toastEl.textContent = msg;
+    toastEl.className = 'show' + (ok === false ? ' err' : ok === true ? ' ok' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastEl.className = '';
+    }, 4500);
+  }
 }
 
 function fmt(n) {
@@ -370,12 +383,21 @@ $('btn-accrue').onclick = () =>
 $('btn-withdraw').onclick = () =>
   withBusy($('btn-withdraw'), async () => {
     try {
+      const amountRaw = $('wd-amount') ? $('wd-amount').value.trim() : '';
+      const payload = { account: $('wd-account').value };
+      if (amountRaw) payload.principalSats = amountRaw;
       const body = await api('/api/session/withdraw', {
         method: 'POST',
-        body: JSON.stringify({ account: $('wd-account').value }),
+        body: JSON.stringify(payload),
       });
       render(body.snapshot);
-      log('Withdrew ' + fmt(body.principalSats) + ' sats principal', true);
+      log(
+        'Withdrew ' +
+          fmt(body.principalSats) +
+          ' sats principal; remaining ' +
+          fmt(body.remainingPrincipal),
+        true,
+      );
     } catch (e) {
       log(String(e), false);
     }
