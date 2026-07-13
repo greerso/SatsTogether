@@ -348,8 +348,14 @@ export class ShareLedger {
 
   /**
    * Restore a ledger from a full snapshot (export/import). Rebuilds ownership map.
+   * Rejects inconsistent snapshots (overlapping segments, principal≠shares, dual owners).
    */
   static restore(snap: LedgerSnapshot, satsPerShare: bigint = DEFAULT_SATS_PER_SHARE): ShareLedger {
+    if (satsPerShare <= 0n) throw new Error('satsPerShare must be > 0');
+    if (snap.nextShareIndex < 0n) throw new Error('nextShareIndex must be >= 0');
+    if (snap.yieldPoolSats < 0n) throw new Error('yieldPoolSats must be >= 0');
+    if (snap.epoch < 0) throw new Error('epoch must be >= 0');
+
     const ledger = new ShareLedger(satsPerShare);
     ledger.nextShareIndex = snap.nextShareIndex;
     ledger.yieldPoolSats = snap.yieldPoolSats;
@@ -360,23 +366,61 @@ export class ShareLedger {
       winnerDetails: d.winnerDetails.map(w => ({ ...w })),
       byAccount: { ...d.byAccount },
     }));
+
+    const seenAccounts = new Set<string>();
     let totalSegShares = 0n;
+    let maxExclusive = 0n;
+
     for (const p of snap.positions) {
-      for (const seg of p.segments) totalSegShares += seg.shareCount;
+      if (!p.account) throw new Error('position account required');
+      if (seenAccounts.has(p.account)) throw new Error(`duplicate position account: ${p.account}`);
+      seenAccounts.add(p.account);
+      if (!p.segments?.length) throw new Error(`position ${p.account}: empty segments`);
+
+      let segSum = 0n;
+      for (const seg of p.segments) {
+        if (seg.shareCount <= 0n) throw new Error(`position ${p.account}: segment shareCount must be > 0`);
+        if (seg.startIndex < 0n) throw new Error(`position ${p.account}: startIndex must be >= 0`);
+        segSum += seg.shareCount;
+        const end = seg.startIndex + seg.shareCount;
+        if (end > maxExclusive) maxExclusive = end;
+      }
+      if (segSum !== p.shareCount) {
+        throw new Error(
+          `position ${p.account}: shareCount ${p.shareCount} != sum(segments) ${segSum}`,
+        );
+      }
+      if (p.principalSats !== p.shareCount * satsPerShare) {
+        throw new Error(
+          `position ${p.account}: principalSats must equal shareCount * satsPerShare`,
+        );
+      }
+      totalSegShares += segSum;
     }
+
     if (totalSegShares > MAX_SHARE_SPACE) {
       throw new Error(`share space cap ${MAX_SHARE_SPACE} exceeded (prototype guard)`);
     }
+    if (maxExclusive > snap.nextShareIndex) {
+      throw new Error('segment range exceeds nextShareIndex');
+    }
+
     for (const p of snap.positions) {
       const pos = clonePos(p);
       ledger.positions.set(pos.account, pos);
       for (const seg of pos.segments) {
         for (let i = 0n; i < seg.shareCount; i++) {
-          ledger.ownerByIndex.set((seg.startIndex + i).toString(), pos.account);
+          const key = (seg.startIndex + i).toString();
+          if (ledger.ownerByIndex.has(key)) {
+            throw new Error(`overlapping share index ${key} on import`);
+          }
+          ledger.ownerByIndex.set(key, pos.account);
         }
       }
     }
+
     for (const [acct, amt] of Object.entries(snap.claimBalances || {})) {
+      if (amt < 0n) throw new Error(`claim balance for ${acct} must be >= 0`);
       if (amt > 0n) ledger.claimBalances.set(acct, amt);
     }
     return ledger;

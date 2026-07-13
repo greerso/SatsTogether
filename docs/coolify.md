@@ -25,7 +25,13 @@ Env:
 PORT=3000
 HOST=0.0.0.0
 PUBLIC_URL=https://satstogether.greerso.com
+TRUST_PROXY=1
+TRUST_PROXY_HOPS=1
 ```
+
+`TRUST_PROXY=1` (default when `PUBLIC_URL` is https) uses `X-Real-IP` or the
+rightmost `X-Forwarded-For` hop for rate limits — not the client-spoofable leftmost
+value. Local http: socket IP only unless you set `TRUST_PROXY=1`.
 
 ## Redeploy
 

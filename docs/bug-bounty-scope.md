@@ -48,11 +48,11 @@
 
 ## Known open items from internal review (2026-07-13)
 
-See `docs/internal-security-review-2026-07-13.md`:
+See `docs/internal-security-review-2026-07-13.md`. Remaining after follow-up hardening:
 
-- XFF-based rate-limit bypass / explorer amplification  
-- Draw seed grindability (design; not production fairness)  
-- Session eviction griefing  
-- Import snapshot consistency  
+- Draw seed grindability (design; not production fairness) — ST-4  
+- Session eviction griefing — ST-5  
+- Expensive mint loop (bounded) — ST-7  
+- Error message leak (low) — ST-8  
 
-These remain in scope for a future funded program.
+Fixed in follow-up: ST-3 trusted proxy IP, ST-6 import validation.
