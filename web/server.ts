@@ -19,6 +19,7 @@ import {
   commitSeed,
   clearSeedCommit,
   assertSeedReveal,
+  seedCommitRequired,
   ledgerFromSnapshotJson,
   setSessionState,
   type SnapshotJson,
@@ -28,6 +29,7 @@ const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 const COOKIE = 'st_session';
+const REQUIRE_COMMIT = seedCommitRequired(PUBLIC_URL);
 
 /** Simple per-IP throttle (in-memory, best-effort). */
 const rateHits = new Map<string, number>();
@@ -171,6 +173,9 @@ const server = createServer(async (req, res) => {
           'Not audited',
           'Ephemeral in-memory sessions',
           'Offline draw model (placeholder_mix)',
+          REQUIRE_COMMIT
+            ? 'Session draws require seed commit-reveal'
+            : 'Seed commit optional (REQUIRE_SEED_COMMIT=0)',
           'Claim credits are sim-only (not Lightning delivery)',
           'No real-funds / vaults / BitVM2 circuit',
         ],
@@ -298,7 +303,7 @@ const server = createServer(async (req, res) => {
       }
       const userSeed = String(body.userSeed || 'satstogether-web-demo');
       try {
-        assertSeedReveal(state, userSeed);
+        assertSeedReveal(state, userSeed, { required: REQUIRE_COMMIT });
         const chain = await fetchAdjacentBlockHashes({ network, timeoutMs: 15_000 });
         const seed = parseUserSeed(userSeed);
         const draw = ledger.draw(chain.blockHashN, chain.blockHashN1, seed, numWinners);
@@ -470,13 +475,18 @@ const server = createServer(async (req, res) => {
         ledger.deposit('alice', 1_000_000n); // top-up
         ledger.accrueYield(50_000n);
         const chain = await fetchAdjacentBlockHashes({ network, timeoutMs: 15_000 });
-        const seed = parseUserSeed(String(body.userSeed || 'overnight-demo'));
+        const seedStr = String(body.userSeed || 'overnight-demo');
+        // Demo always commit-reveals so production HTTPS path stays consistent.
+        commitSeed(state, seedStr);
+        const seed = parseUserSeed(seedStr);
+        assertSeedReveal(state, seedStr, { required: true });
         const numWinners = Number(body.numWinners ?? 3);
         const safeWinners =
           Number.isInteger(numWinners) && numWinners >= 0
             ? Math.min(numWinners, MAX_WINNERS)
             : 3;
         const draw = ledger.draw(chain.blockHashN, chain.blockHashN1, seed, safeWinners);
+        clearSeedCommit(state);
         const winnerDetails = draw.winnerDetails.map(w => ({
           index: w.index.toString(),
           account: w.account,
@@ -494,6 +504,7 @@ const server = createServer(async (req, res) => {
               'deposit bob 2M',
               'deposit carol 1M',
               'accrue 50k yield',
+              'commit-reveal seed',
               `draw ${network} tip hashes`,
             ],
             chain: {

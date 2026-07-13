@@ -252,9 +252,12 @@
     </div>
 
     <!-- ══ COMMIT-REVEAL SEED ══ -->
-    <div class="section-label">SEED COMMIT · REVEAL AT DRAW</div>
+    <div class="section-label">SEED COMMIT · REQUIRED BEFORE DRAW (HTTPS)</div>
     <div class="card">
-      <p style="margin:0 0 8px;font-size:14px;color:var(--muted)">Optional: commit <code>sha256(seed)</code> before the tip moves. Draw must use the same seed string. Prototype only.</p>
+      <p style="margin:0 0 8px;font-size:14px;color:var(--muted)">
+        Production HTTPS requires <code>sha256(seed)</code> commit before draw. Reveal must match.
+        Local http can set <code>REQUIRE_SEED_COMMIT=0</code>. Still not on-chain BitVM commit-reveal.
+      </p>
       <div class="mono" id="commit-status" style="font-size:12px;color:var(--muted);margin-bottom:8px">No commitment</div>
       <button type="button" class="btn ghost" id="btn-commit">Commit current seed</button>
     </div>
