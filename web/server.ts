@@ -127,6 +127,7 @@ const server = createServer(async (req, res) => {
           '/api/session/accrue',
           '/api/session/withdraw',
           '/api/session/draw',
+          '/api/session/demo',
           '/api/testnet/draw',
         ],
       });
@@ -164,6 +165,10 @@ const server = createServer(async (req, res) => {
             startIndex: position.startIndex.toString(),
             shareCount: position.shareCount.toString(),
             principalSats: position.principalSats.toString(),
+            segments: position.segments.map(s => ({
+              startIndex: s.startIndex.toString(),
+              shareCount: s.shareCount.toString(),
+            })),
           },
           snapshot: snapshotJson(ledger),
         },
@@ -219,6 +224,10 @@ const server = createServer(async (req, res) => {
         const chain = await fetchAdjacentBlockHashes({ network, timeoutMs: 15_000 });
         const seed = parseUserSeed(userSeed);
         const draw = ledger.draw(chain.blockHashN, chain.blockHashN1, seed, numWinners);
+        const winnerDetails = ledger.winnersDetail(draw.winners).map(w => ({
+          index: w.index.toString(),
+          account: w.account,
+        }));
         json(
           res,
           200,
@@ -234,6 +243,7 @@ const server = createServer(async (req, res) => {
             draw: {
               epoch: draw.epoch,
               winners: draw.winners.map(String),
+              winnerDetails,
               prizePerWinner: draw.prizePerWinner.toString(),
               yieldAvailable: draw.yieldAvailable.toString(),
               allocated: draw.allocated.toString(),
@@ -251,6 +261,90 @@ const server = createServer(async (req, res) => {
               ok: false,
               soft_fail: true,
               error: e.message,
+              snapshot: snapshotJson(ledger),
+            },
+            id,
+          );
+          return;
+        }
+        throw e;
+      }
+      return;
+    }
+
+    // One-click demo: reset → multi-user deposits → yield → testnet draw
+    if (req.method === 'POST' && url.pathname === '/api/session/demo') {
+      const cookies = parseCookies(req);
+      const { id } = getOrCreateLedger(cookies[COOKIE]);
+      const ledger = resetLedger(id);
+      const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+      const networkRaw = String(body.network || 'testnet');
+      if (networkRaw !== 'testnet' && networkRaw !== 'signet') {
+        json(res, 400, { ok: false, error: 'network must be testnet or signet' }, id);
+        return;
+      }
+      const network = networkRaw as ChainNetwork;
+      try {
+        ledger.deposit('alice', 5_000_000n);
+        ledger.deposit('bob', 2_000_000n);
+        ledger.deposit('carol', 1_000_000n);
+        ledger.deposit('alice', 1_000_000n); // top-up
+        ledger.accrueYield(50_000n);
+        const chain = await fetchAdjacentBlockHashes({ network, timeoutMs: 15_000 });
+        const seed = parseUserSeed(String(body.userSeed || 'overnight-demo'));
+        const numWinners = Number(body.numWinners ?? 3);
+        const draw = ledger.draw(
+          chain.blockHashN,
+          chain.blockHashN1,
+          seed,
+          Number.isInteger(numWinners) && numWinners >= 0 ? numWinners : 3,
+        );
+        const winnerDetails = ledger.winnersDetail(draw.winners).map(w => ({
+          index: w.index.toString(),
+          account: w.account,
+        }));
+        json(
+          res,
+          200,
+          {
+            ok: true,
+            soft_fail: false,
+            sessionId: id,
+            steps: [
+              'reset session',
+              'deposit alice 5M + top-up 1M',
+              'deposit bob 2M',
+              'deposit carol 1M',
+              'accrue 50k yield',
+              `draw ${network} tip hashes`,
+            ],
+            chain: {
+              network: chain.network,
+              heights: { n: chain.heightN, n1: chain.heightN1 },
+              hashes: { n: chain.hashNHex, n1: chain.hashN1Hex },
+            },
+            draw: {
+              epoch: draw.epoch,
+              winners: draw.winners.map(String),
+              winnerDetails,
+              prizePerWinner: draw.prizePerWinner.toString(),
+              yieldAvailable: draw.yieldAvailable.toString(),
+              allocated: draw.allocated.toString(),
+            },
+            snapshot: snapshotJson(ledger),
+          },
+          id,
+        );
+      } catch (e) {
+        if (e instanceof NetworkError) {
+          json(
+            res,
+            200,
+            {
+              ok: false,
+              soft_fail: true,
+              error: e.message,
+              note: 'Deposits + yield applied; draw soft-failed (explorer).',
               snapshot: snapshotJson(ledger),
             },
             id,

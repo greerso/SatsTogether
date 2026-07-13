@@ -101,19 +101,19 @@ Code map:
 
 - `principalSats > 0`
 - `principalSats % SATS_PER_SHARE == 0`
-- Sim v1: account has no open position
 
 **Effects**
 
 - `shareCount = principalSats / SATS_PER_SHARE`
-- Assign indices `[nextShareIndex, nextShareIndex + shareCount)`
+- Assign indices `[nextShareIndex, nextShareIndex + shareCount)` as a new **segment**
 - `nextShareIndex += shareCount`
-- Principal recorded on position
+- If account already has a position: **top-up** — append segment, increase principal/shareCount
+  (segments may be non-contiguous if other accounts minted in between)
+- Else: create position with one segment
 
 **Failure modes**
 
 - Non-multiple principal → reject
-- Duplicate open position (sim v1) → reject
 
 ### 3.2 Accrue yield
 

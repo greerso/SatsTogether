@@ -6,8 +6,8 @@
  *
  * Share model (sim only):
  * - 1 share unit = SATS_PER_SHARE sats of principal (default 1000).
- * - Deposit mints contiguous share indices [nextIndex, nextIndex+n).
- * - Withdraw burns shares and returns principal.
+ * - Deposit mints share indices; top-ups append new segments (may be non-contiguous).
+ * - Withdraw burns all segments and returns principal.
  * - Draw records allocate yield from the pool into DrawRecord (audit sink only);
  *   per-account claim balances are not implemented yet.
  */
@@ -19,13 +19,24 @@ export const DEFAULT_SATS_PER_SHARE = 1000n;
 
 export type AccountId = string;
 
-export interface Position {
-  account: AccountId;
+export interface ShareSegment {
   /** Inclusive start index in global share space. */
   startIndex: bigint;
-  /** Number of shares held (contiguous block). */
+  shareCount: bigint;
+}
+
+export interface Position {
+  account: AccountId;
+  /**
+   * First segment start (compat field for UIs). Full ownership is in `segments`.
+   * Non-contiguous after top-ups.
+   */
+  startIndex: bigint;
+  /** Total shares across all segments. */
   shareCount: bigint;
   principalSats: bigint;
+  /** Mint ranges (top-ups append). */
+  segments: ShareSegment[];
 }
 
 export interface DrawRecord {
@@ -50,6 +61,16 @@ export interface LedgerSnapshot {
   positions: Position[];
   draws: DrawRecord[];
   epoch: number;
+}
+
+function clonePos(p: Position): Position {
+  return {
+    account: p.account,
+    startIndex: p.startIndex,
+    shareCount: p.shareCount,
+    principalSats: p.principalSats,
+    segments: p.segments.map(s => ({ ...s })),
+  };
 }
 
 export class ShareLedger {
@@ -89,6 +110,10 @@ export class ShareLedger {
     return this.yieldPoolSats;
   }
 
+  /**
+   * Mint shares for an account. Top-up allowed: appends a new segment at the
+   * high-water mark (may leave holes if other accounts minted in between).
+   */
   deposit(account: AccountId, principalSats: bigint): Position {
     if (!account) throw new Error('account required');
     if (principalSats <= 0n) throw new Error('principalSats must be > 0');
@@ -98,10 +123,21 @@ export class ShareLedger {
 
     const shareCount = principalSats / this.satsPerShare;
     const startIndex = this.nextShareIndex;
+    const segment: ShareSegment = { startIndex, shareCount };
 
-    // Sim v1: one contiguous open position per account.
-    if (this.positions.has(account)) {
-      throw new Error('sim v1: one open position per account (withdraw first)');
+    for (let i = 0n; i < shareCount; i++) {
+      this.ownerByIndex.set((startIndex + i).toString(), account);
+    }
+    this.nextShareIndex += shareCount;
+
+    const existing = this.positions.get(account);
+    if (existing) {
+      existing.segments.push(segment);
+      existing.shareCount += shareCount;
+      existing.principalSats += principalSats;
+      // startIndex stays first mint
+      this.positions.set(account, existing);
+      return clonePos(existing);
     }
 
     const pos: Position = {
@@ -109,14 +145,10 @@ export class ShareLedger {
       startIndex,
       shareCount,
       principalSats,
+      segments: [segment],
     };
-
-    for (let i = 0n; i < shareCount; i++) {
-      this.ownerByIndex.set((startIndex + i).toString(), account);
-    }
     this.positions.set(account, pos);
-    this.nextShareIndex += shareCount;
-    return { ...pos };
+    return clonePos(pos);
   }
 
   /**
@@ -141,7 +173,6 @@ export class ShareLedger {
     userSeed: Bytes32,
     numWinners: number,
   ): DrawRecord {
-    // High-water index space keeps historical indices stable; burned holes allocate nothing.
     const space = this.nextShareIndex;
     const raw = selectWinners(blockHashN, blockHashN1, userSeed, space, numWinners);
     const liveWinners = raw.filter(idx => this.ownerByIndex.has(idx.toString()));
@@ -170,7 +201,14 @@ export class ShareLedger {
   }
 
   /**
-   * Withdraw full position: return principal, burn shares.
+   * Annotate winner indices with current owners (null if burned after draw — not expected).
+   */
+  winnersDetail(winners: bigint[]): { index: bigint; account: AccountId | null }[] {
+    return winners.map(index => ({ index, account: this.ownerOf(index) }));
+  }
+
+  /**
+   * Withdraw full position: return principal, burn all segments.
    * Draw allocations are epoch records only; withdraw does not touch them.
    * Remaining yield stays in the pool.
    */
@@ -178,8 +216,10 @@ export class ShareLedger {
     const pos = this.positions.get(account);
     if (!pos) throw new Error('no position');
 
-    for (let i = 0n; i < pos.shareCount; i++) {
-      this.ownerByIndex.delete((pos.startIndex + i).toString());
+    for (const seg of pos.segments) {
+      for (let i = 0n; i < seg.shareCount; i++) {
+        this.ownerByIndex.delete((seg.startIndex + i).toString());
+      }
     }
     this.positions.delete(account);
     return { principalSats: pos.principalSats };
@@ -191,7 +231,7 @@ export class ShareLedger {
       totalPrincipalSats: this.totalPrincipalSats,
       yieldPoolSats: this.yieldPoolSats,
       nextShareIndex: this.nextShareIndex,
-      positions: [...this.positions.values()].map(p => ({ ...p })),
+      positions: [...this.positions.values()].map(clonePos),
       draws: this.draws.map(d => ({ ...d, winners: [...d.winners] })),
       epoch: this.epoch,
     };

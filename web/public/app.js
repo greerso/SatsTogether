@@ -109,22 +109,29 @@ function render(snap) {
       '</table>'
     : 'No positions yet — deposit to mint SatsShares.';
 
-  // Draws table
+  // Draws table (include owners when present)
   $('draws').innerHTML = draws.length
     ? '<table><tr><th>epoch</th><th>winners</th><th>allocated</th></tr>' +
       draws
         .slice()
         .reverse()
-        .map(
-          (d) =>
+        .map((d) => {
+          const details = d.winnerDetails;
+          const winLabel = details && details.length
+            ? details.map((w) => w.index + (w.account ? '→' + w.account : '')).join(', ')
+            : d.winners.length
+              ? d.winners.join(', ')
+              : '—';
+          return (
             '<tr><td>' +
             d.epoch +
             '</td><td class="mono">' +
-            (d.winners.length ? d.winners.join(', ') : '—') +
+            winLabel +
             '</td><td class="win">' +
             fmt(d.allocated) +
-            ' sats</td></tr>',
-        )
+            ' sats</td></tr>'
+          );
+        })
         .join('') +
       '</table>'
     : 'No draws yet';
@@ -174,11 +181,14 @@ function showDrawResult(body) {
   const el = $('draw-result-body');
   if (!box || !el) return;
   box.hidden = false;
+  const owners = (body.draw.winnerDetails || [])
+    .map((w) => w.index + (w.account ? '→' + w.account : ''))
+    .join(', ');
   el.textContent =
     'epoch ' +
     body.draw.epoch +
     '\nwinners [' +
-    body.draw.winners.join(', ') +
+    (owners || body.draw.winners.join(', ')) +
     ']\nallocated ' +
     fmt(body.draw.allocated) +
     ' sats' +
@@ -238,6 +248,39 @@ $('btn-reset').onclick = () =>
       render(body.snapshot);
       $('draw-result').hidden = true;
       log('Session reset', true);
+    } catch (e) {
+      log(String(e), false);
+    }
+  });
+
+$('btn-demo').onclick = () =>
+  withBusy($('btn-demo'), async () => {
+    try {
+      log('Running demo walkthrough (reset → multi-user → yield → testnet draw)…');
+      const body = await api('/api/session/demo', {
+        method: 'POST',
+        body: JSON.stringify({
+          network: $('network').value,
+          numWinners: Number($('winners').value),
+          userSeed: 'overnight-demo',
+        }),
+      });
+      render(body.snapshot);
+      if (body.soft_fail) {
+        log('Demo deposits applied; draw SOFT FAIL: ' + body.error, false);
+        return;
+      }
+      showDrawResult(body);
+      log(
+        'Demo done — epoch ' +
+          body.draw.epoch +
+          ' winners=[' +
+          (body.draw.winnerDetails || [])
+            .map((w) => w.index + '→' + (w.account || '?'))
+            .join(', ') +
+          ']',
+        true,
+      );
     } catch (e) {
       log(String(e), false);
     }

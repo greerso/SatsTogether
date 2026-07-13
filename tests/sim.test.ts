@@ -207,10 +207,40 @@ describe('sim/ledger share accounting', () => {
     assert.throws(() => ledger.deposit('alice', 1500n), /multiple/);
   });
 
-  it('rejects second open position for same account', () => {
+  it('top-up appends shares for same account (multi-segment)', () => {
     const ledger = new ShareLedger();
     ledger.deposit('alice', 1000n);
-    assert.throws(() => ledger.deposit('alice', 1000n), /one open position/);
+    ledger.deposit('bob', 1000n);
+    const top = ledger.deposit('alice', 2000n);
+    assert.equal(top.shareCount, 3n);
+    assert.equal(top.principalSats, 3000n);
+    assert.equal(top.segments.length, 2);
+    assert.equal(top.segments[0]!.startIndex, 0n);
+    assert.equal(top.segments[1]!.startIndex, 2n);
+    assert.equal(ledger.ownerOf(0n), 'alice');
+    assert.equal(ledger.ownerOf(1n), 'bob');
+    assert.equal(ledger.ownerOf(2n), 'alice');
+    assert.equal(ledger.ownerOf(3n), 'alice');
+    assert.equal(ledger.totalShares, 4n);
+    const out = ledger.withdraw('alice');
+    assert.equal(out.principalSats, 3000n);
+    assert.equal(ledger.ownerOf(0n), null);
+    assert.equal(ledger.ownerOf(2n), null);
+    assert.equal(ledger.ownerOf(1n), 'bob');
+  });
+
+  it('winnersDetail annotates owners', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 1000n);
+    ledger.deposit('bob', 1000n);
+    const detail = ledger.winnersDetail([0n, 1n]);
+    assert.deepEqual(
+      detail.map(d => ({ i: d.index, a: d.account })),
+      [
+        { i: 0n, a: 'alice' },
+        { i: 1n, a: 'bob' },
+      ],
+    );
   });
 });
 
