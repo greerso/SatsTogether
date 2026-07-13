@@ -29,25 +29,28 @@
       100% yours — only the yield funds the weekly prize pool. Deposit sats, mint SatsShares, and run
       a provably-fair draw off real testnet block hashes.</p>
 
-    <!-- ══ PRIZE POOL HERO (screens 03 / 04 / 07) ══ -->
+    <!-- ══ PRIZE POOL HERO — live session yield (screens 03 / 04 / 07) ══ -->
     <div class="hero">
       <div class="between">
-        <span class="cap">THIS WEEK'S PRIZE POOL <span class="illus">illustrative</span></span>
-        <span class="badge">12 winners</span>
+        <span class="cap">SESSION PRIZE POOL <span class="badge" style="margin-left:8px">live ledger</span></span>
+        <span class="badge" id="hero-winners-badge">up to 3 winners</span>
       </div>
-      <div class="big disp">₿0.84</div>
-      <div class="sub">≈ $92,400 · split across 12 winners</div>
+      <div class="big disp" id="hero-pool-btc">₿0</div>
+      <div class="sub" id="hero-pool-sub">0 sats · only yield funds prizes · principal never at risk in this sim</div>
       <div class="count">
-        <div class="u"><b class="disp">02</b><span>DAYS</span></div>
-        <div class="u"><b class="disp">14</b><span>HRS</span></div>
-        <div class="u"><b class="disp">06</b><span>MIN</span></div>
-        <div class="u"><b class="disp">—</b><span>NEXT DRAW</span></div>
+        <div class="u"><b class="disp" id="hero-shares">0</b><span>SHARES</span></div>
+        <div class="u"><b class="disp" id="hero-accounts">0</b><span>ACCOUNTS</span></div>
+        <div class="u"><b class="disp" id="hero-epoch">0</b><span>EPOCH</span></div>
+        <div class="u"><b class="disp" id="hero-last">—</b><span>LAST DRAW</span></div>
+      </div>
+      <div class="sub" style="margin-top:12px;opacity:.9;font-size:13px">
+        Marketing canvas showed ₿0.84 / $92k — <span class="badge">illustrative only</span>. Numbers above are your ephemeral session.
       </div>
     </div>
 
     <!-- ══ LIVE SESSION STATS (real — screen 03 Home) ══ -->
     <div class="section-label">YOUR SESSION · LIVE LEDGER</div>
-    <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+    <div class="grid stats-grid">
       <div class="card">
         <div class="kicker">YOUR SAVINGS</div>
         <div class="stat-num disp" style="font-size:26px" id="stat-principal">—</div>
@@ -88,8 +91,15 @@
           <div class="amount">
             <div class="lab">DEPOSIT AMOUNT (sats)</div>
             <div class="field-row">
-              <label>Account id <input id="dep-account" value="alice" /></label>
+              <label>Account id <input id="dep-account" value="alice" autocomplete="username" /></label>
               <label>Principal sats (×1000) <input id="dep-sats" type="number" min="1000" step="1000" value="2500000" /></label>
+            </div>
+            <div class="quick-chips" id="dep-quick" aria-label="Quick deposit amounts">
+              <button type="button" class="qchip" data-sats="1000">1k</button>
+              <button type="button" class="qchip" data-sats="10000">10k</button>
+              <button type="button" class="qchip" data-sats="100000">100k</button>
+              <button type="button" class="qchip" data-sats="1000000">1M</button>
+              <button type="button" class="qchip" data-sats="2500000">2.5M</button>
             </div>
             <div class="hr"></div>
             <div class="between">
@@ -115,10 +125,20 @@
           <button type="button" class="btn" id="btn-accrue">Accrue yield into pool</button>
         </div>
 
+        <!-- POSITIONS (live multi-account) -->
+        <div class="card">
+          <div class="between" style="margin-bottom:6px">
+            <div class="disp" style="font-size:17px;font-weight:700">Open positions</div>
+            <span class="illus">live session</span>
+          </div>
+          <div id="positions" style="color:var(--muted);font-size:14px">No positions yet</div>
+        </div>
+
         <!-- RECENT DRAWS (real — screen 07 desktop) -->
         <div class="card">
           <div class="between" style="margin-bottom:6px">
-            <div class="disp" style="font-size:17px;font-weight:700">Recent draws <span class="illus">this session</span></div>
+            <div class="disp" style="font-size:17px;font-weight:700">Recent draws</div>
+            <span class="illus">this session</span>
           </div>
           <div id="draws" style="color:var(--muted);font-size:14px">No draws yet</div>
         </div>
@@ -126,40 +146,34 @@
 
       <!-- ── RIGHT COLUMN ── -->
       <div class="grid">
-        <!-- STREAK (screen 03, illustrative) -->
+        <!-- SESSION STREAK derived from epochs (honest, not fake 42 days) -->
         <div class="card">
           <div class="between">
-            <div class="disp" style="font-size:18px;font-weight:700">42-day streak</div>
-            <span class="illus">illustrative</span>
+            <div class="disp" style="font-size:18px;font-weight:700" id="streak-title">0 draws this session</div>
+            <span class="illus">session</span>
           </div>
-          <div style="font-size:13px;color:var(--muted)">3 days to your next badge</div>
-          <div class="streak-bar"><i style="width:82%"></i></div>
+          <div style="font-size:13px;color:var(--muted)" id="streak-sub">Run a testnet draw to grow history</div>
+          <div class="streak-bar"><i id="streak-bar" style="width:0%"></i></div>
         </div>
 
-        <!-- YIELD APY (screen 07, illustrative) -->
+        <!-- Yield note (honest — mock accrue, not APY) -->
         <div class="card">
-          <div class="kicker">YIELD APY <span class="illus">illustrative</span></div>
-          <div class="stat-num disp" style="font-size:28px">4.1%</div>
-          <div style="font-size:12.5px;color:var(--muted)">funds the pool</div>
+          <div class="kicker">YIELD INTO POOL</div>
+          <div class="stat-num disp" style="font-size:28px" id="yield-hint">sim</div>
+          <div style="font-size:12.5px;color:var(--muted)">Use Accrue — not a real APY. Design showed 4.1% as <span class="illus">illustrative</span>.</div>
         </div>
 
-        <!-- POD (screen 05, illustrative) -->
+        <!-- POD from live accounts (screen 05 shape, real members) -->
         <div class="pod">
           <div class="between">
-            <span style="font-size:12px;font-weight:700;letter-spacing:.6px;color:rgba(255,255,255,.85)">YOUR POD <span class="illus" style="color:#0B7F72;background:rgba(255,255,255,.75)">illustrative</span></span>
-            <span class="badge">8 members</span>
+            <span style="font-size:12px;font-weight:700;letter-spacing:.6px;color:rgba(255,255,255,.85)">SESSION POD</span>
+            <span class="badge" id="pod-members">0 members</span>
           </div>
-          <div class="disp" style="font-size:22px;font-weight:800;margin-top:8px">Diamond Hands</div>
-          <div class="avatars">
-            <div class="a" style="background:#FFB84D">S</div>
-            <div class="a" style="background:#FFCE8A">M</div>
-            <div class="a" style="background:#FFE0B0">J</div>
-            <div class="a" style="background:#F4552E;color:#fff">K</div>
-            <div class="a" style="background:rgba(255,255,255,.25);color:#fff;font-size:11px">+4</div>
-          </div>
+          <div class="disp" style="font-size:22px;font-weight:800;margin-top:8px">SatsTogether demo</div>
+          <div class="avatars" id="pod-avatars"></div>
           <div class="row">
-            <div><div class="k">Combined</div><div class="v disp">41,200</div></div>
-            <div><div class="k">Pooled odds</div><div class="v disp">12.4%</div></div>
+            <div><div class="k">Combined shares</div><div class="v disp" id="pod-shares">0</div></div>
+            <div><div class="k">Your odds</div><div class="v disp" id="pod-odds">—</div></div>
           </div>
         </div>
       </div>
@@ -169,7 +183,7 @@
     <div class="section-label">WEEKLY DRAW · PROVABLY FAIR</div>
     <div class="draw">
       <div style="text-align:center">
-        <span class="live"><span class="d"></span>WEEKLY DRAW · TESTNET · LIVE SOON</span>
+        <span class="live"><span class="d"></span>WEEKLY DRAW · TESTNET / SIGNET · LIVE HASHES</span>
       </div>
       <div style="text-align:center;margin-top:24px">
         <div style="font-size:14px;color:rgba(255,255,255,.55)">Session yield pool</div>
@@ -190,10 +204,15 @@
 
       <div class="fair">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.3-2.9 7.6-7 8.8C7.9 18.6 5 15.3 5 11V6l7-3z" stroke="#FFB84D" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        <span>Winners drawn from live Bitcoin <b>testnet</b> block hashes (tip-1 + tip) mixed with your seed — provably fair, no operator.</span>
+        <span>Winners drawn from live Bitcoin <b>testnet/signet</b> block hashes (tip-1 + tip) mixed with your seed — offline model, no mainnet.</span>
       </div>
 
       <button type="button" class="btn" id="btn-draw">Draw from chain</button>
+
+      <div id="draw-result" class="glass draw-result" hidden>
+        <div class="dr-title disp">Last draw result</div>
+        <div id="draw-result-body" class="mono"></div>
+      </div>
     </div>
 
     <!-- ══ WITHDRAW (screen 06 — teal, WIRED) ══ -->

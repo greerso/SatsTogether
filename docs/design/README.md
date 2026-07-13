@@ -43,8 +43,11 @@ the real in-memory session ledger (`web/session-store.ts`) and, for draws, live 
 
 ## Implementation
 
-- `web/public/index.html` · `styles.css` · `app.js` — single-page app, tokens 1:1 with design.
-- `web/server.ts` — serves the three static files via an explicit allowlist (no `../`
-  traversal); all existing APIs unchanged, including legacy `GET/POST /api/testnet/draw`.
+- `web/public/index.html` · `styles.css` · `app.js` — product SPA on Coolify; tokens 1:1 with design.
+- Live-wired: hero prize pool, session pod, streak, positions, draw results (session ledger + testnet hashes).
+- `frontend-web/` — design canvas gallery (Vite/React frames); UI mock only, not the Coolify app.
+- `web/server.ts` — static allowlist + session APIs.
 
-Run: `npm run web` (→ `http://localhost:3000`). Tests: `npm test`.
+Run product: `npm run web` → `http://localhost:3000`.  
+Design gallery: `cd frontend-web && npm run dev`.  
+Tests: `npm test`.

@@ -210,4 +210,20 @@ td.win { color: var(--teal-2); font-weight: 700; }
 .streak-bar { margin-top: 14px; height: 8px; border-radius: 99px; background: #F0E7D8; overflow: hidden; }
 .streak-bar > i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #FFB443, #EE6B12); }
 
+.stats-grid { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 860px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 420px) { .stats-grid { grid-template-columns: 1fr; } }
+
+.quick-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.qchip {
+  border: 1px solid var(--line-2); background: #fff; color: var(--ink);
+  border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.qchip:hover { border-color: var(--btc-2); color: var(--btc-4); }
+
+.draw-result { margin-top: 18px; padding: 14px 16px; text-align: left; }
+.draw-result .dr-title { font-size: 14px; font-weight: 700; color: #FFB84D; margin-bottom: 8px; }
+.draw-result .mono { font-size: 12px; line-height: 1.55; color: rgba(255,255,255,.78); white-space: pre-wrap; word-break: break-all; }
+
 .footer-links { margin-top: 30px; color: var(--muted); font-size: 14px; }
