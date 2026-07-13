@@ -111,13 +111,46 @@ export async function fetchAdjacentBlockHashes(opts: {
   if (network !== 'testnet' && network !== 'signet') {
     throw new Error('only testnet|signet allowed (no mainnet default)');
   }
-  const baseUrl = (opts.baseUrl ?? NETWORK_BASE_URL[network]).replace(/\/$/, '');
+  const primaryBase = (opts.baseUrl ?? NETWORK_BASE_URL[network]).replace(/\/$/, '');
+  // One automatic retry: same explorer host with a short backoff, then alternate
+  // public base for the same network family when not overridden.
+  const alternateBases: string[] = [];
+  if (!opts.baseUrl) {
+    if (network === 'testnet') {
+      alternateBases.push('https://blockstream.info/testnet/api');
+    } else {
+      alternateBases.push('https://mempool.space/signet/api');
+    }
+  }
+  const bases = [primaryBase, ...alternateBases.map(b => b.replace(/\/$/, ''))];
   const fetchImpl = opts.fetchImpl ?? (globalThis.fetch as FetchLike);
   if (typeof fetchImpl !== 'function') {
     throw new NetworkError('global fetch is not available');
   }
   const timeoutMs = opts.timeoutMs ?? 15_000;
 
+  let lastErr: unknown;
+  for (let i = 0; i < bases.length; i++) {
+    const baseUrl = bases[i]!;
+    try {
+      return await fetchAdjacentFromBase(fetchImpl, network, baseUrl, timeoutMs);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  if (lastErr instanceof NetworkError) throw lastErr;
+  throw new NetworkError(
+    `fetch failed for all explorers: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
+    lastErr,
+  );
+}
+
+async function fetchAdjacentFromBase(
+  fetchImpl: FetchLike,
+  network: ChainNetwork,
+  baseUrl: string,
+  timeoutMs: number,
+): Promise<AdjacentBlockHashes> {
   const tipHeightStr = await getText(fetchImpl, `${baseUrl}/blocks/tip/height`, timeoutMs);
   const tipHeight = Number(tipHeightStr);
   if (!Number.isInteger(tipHeight) || tipHeight < 1) {

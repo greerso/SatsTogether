@@ -16,6 +16,12 @@ import { selectWinners, type Bytes32 } from './draw.ts';
 
 export const VERSION = '0.1.0-prototype';
 export const DEFAULT_SATS_PER_SHARE = 1000n;
+/**
+ * Hard cap on total minted shares per ledger. The `ownerByIndex` map holds one
+ * entry per share, so an unbounded mint (deposit or restore) is an OOM/DoS.
+ * ponytail: flat per-index map, 1M-entry ceiling; switch to segment-range lookup if this bites.
+ */
+export const MAX_SHARE_SPACE = 1_000_000n;
 
 export type AccountId = string;
 
@@ -133,6 +139,9 @@ export class ShareLedger {
     }
 
     const shareCount = principalSats / this.satsPerShare;
+    if (this.nextShareIndex + shareCount > MAX_SHARE_SPACE) {
+      throw new Error(`share space cap ${MAX_SHARE_SPACE} exceeded (prototype guard)`);
+    }
     const startIndex = this.nextShareIndex;
     const segment: ShareSegment = { startIndex, shareCount };
 
@@ -313,6 +322,13 @@ export class ShareLedger {
       winnerDetails: d.winnerDetails.map(w => ({ ...w })),
       byAccount: { ...d.byAccount },
     }));
+    let totalSegShares = 0n;
+    for (const p of snap.positions) {
+      for (const seg of p.segments) totalSegShares += seg.shareCount;
+    }
+    if (totalSegShares > MAX_SHARE_SPACE) {
+      throw new Error(`share space cap ${MAX_SHARE_SPACE} exceeded (prototype guard)`);
+    }
     for (const p of snap.positions) {
       const pos = clonePos(p);
       ledger.positions.set(pos.account, pos);

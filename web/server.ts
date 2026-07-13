@@ -34,6 +34,12 @@ const rateHits = new Map<string, number>();
 const DEMO_COOLDOWN_MS = 15_000;
 const DRAW_COOLDOWN_MS = 3_000;
 
+// Trust-boundary caps: unauthenticated callers must not pass unbounded numeric
+// params. selectWinners' attempt budget scales with numWinners*shares, and the
+// ledger mints one map entry per share — both are DoS vectors without a ceiling.
+const MAX_WINNERS = 1_000;
+const MAX_DRAW_SHARES = 1_000_000n; // legacy endpoint totalShares (no minting there)
+
 function clientIp(req: IncomingMessage): string {
   const xf = req.headers['x-forwarded-for'];
   if (typeof xf === 'string' && xf.length) return xf.split(',')[0]!.trim();
@@ -83,9 +89,10 @@ function parseCookies(req: IncomingMessage): Record<string, string> {
 }
 
 function setSessionCookie(res: ServerResponse, id: string) {
+  const secure = PUBLIC_URL.startsWith('https://') ? '; Secure' : '';
   res.setHeader(
     'set-cookie',
-    `${COOKIE}=${encodeURIComponent(id)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+    `${COOKIE}=${encodeURIComponent(id)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${secure}`,
   );
 }
 
@@ -114,11 +121,19 @@ function snap(state: { ledger: import('./session-store.ts').SessionState['ledger
   return snapshotJson(state.ledger, state.seedCommit);
 }
 
-function parseBigIntField(v: unknown, name: string): bigint {
-  if (typeof v === 'bigint') return v;
-  if (typeof v === 'number' && Number.isInteger(v)) return BigInt(v);
-  if (typeof v === 'string' && /^-?\d+$/.test(v)) return BigInt(v);
-  throw new Error(`${name} must be an integer string`);
+function parseBigIntField(v: unknown, name: string, opts?: { min?: bigint; max?: bigint }): bigint {
+  let n: bigint;
+  if (typeof v === 'bigint') n = v;
+  else if (typeof v === 'number' && Number.isInteger(v)) n = BigInt(v);
+  else if (typeof v === 'string' && /^-?\d+$/.test(v)) n = BigInt(v);
+  else throw new Error(`${name} must be an integer string`);
+  if (opts?.min !== undefined && n < opts.min) {
+    throw new Error(`${name} must be >= ${opts.min}`);
+  }
+  if (opts?.max !== undefined && n > opts.max) {
+    throw new Error(`${name} must be <= ${opts.max}`);
+  }
+  return n;
 }
 
 const server = createServer(async (req, res) => {
@@ -199,7 +214,10 @@ const server = createServer(async (req, res) => {
       const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
       const account = String(body.account || '').trim();
-      const principalSats = parseBigIntField(body.principalSats, 'principalSats');
+      const principalSats = parseBigIntField(body.principalSats, 'principalSats', {
+        min: 1n,
+        max: 1_000_000_000_000n, // 1e12 sats hard cap before share-space guard
+      });
       const position = ledger.deposit(account, principalSats);
       json(
         res,
@@ -228,7 +246,7 @@ const server = createServer(async (req, res) => {
       const { id, state } = sessionFrom(req);
       const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
-      const amountSats = parseBigIntField(body.amountSats, 'amountSats');
+      const amountSats = parseBigIntField(body.amountSats, 'amountSats', { min: 0n });
       ledger.accrueYield(amountSats);
       json(res, 200, { ok: true, sessionId: id, snapshot: snap(state) }, id);
       return;
@@ -269,8 +287,8 @@ const server = createServer(async (req, res) => {
       }
       const network = networkRaw as ChainNetwork;
       const numWinners = Number(body.numWinners ?? 3);
-      if (!Number.isInteger(numWinners) || numWinners < 0) {
-        json(res, 400, { ok: false, error: 'numWinners must be non-negative integer' }, id);
+      if (!Number.isInteger(numWinners) || numWinners < 0 || numWinners > MAX_WINNERS) {
+        json(res, 400, { ok: false, error: `numWinners must be an integer in [0, ${MAX_WINNERS}]` }, id);
         return;
       }
       const userSeed = String(body.userSeed || 'satstogether-web-demo');
@@ -339,7 +357,7 @@ const server = createServer(async (req, res) => {
       const amount =
         body.amountSats === undefined || body.amountSats === null || body.amountSats === ''
           ? undefined
-          : parseBigIntField(body.amountSats, 'amountSats');
+          : parseBigIntField(body.amountSats, 'amountSats', { min: 1n });
       const out = ledger.claim(account, amount);
       json(
         res,
@@ -429,17 +447,17 @@ const server = createServer(async (req, res) => {
         });
         return;
       }
+      const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+      const networkRaw = String(body.network || 'testnet');
+      if (networkRaw !== 'testnet' && networkRaw !== 'signet') {
+        json(res, 400, { ok: false, error: 'network must be testnet or signet' });
+        return;
+      }
+      const network = networkRaw as ChainNetwork;
       const cookies = parseCookies(req);
       const { id } = getOrCreateSession(cookies[COOKIE]);
       const state = resetSession(id);
       const ledger = state.ledger;
-      const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
-      const networkRaw = String(body.network || 'testnet');
-      if (networkRaw !== 'testnet' && networkRaw !== 'signet') {
-        json(res, 400, { ok: false, error: 'network must be testnet or signet' }, id);
-        return;
-      }
-      const network = networkRaw as ChainNetwork;
       try {
         ledger.deposit('alice', 5_000_000n);
         ledger.deposit('bob', 2_000_000n);
@@ -449,12 +467,11 @@ const server = createServer(async (req, res) => {
         const chain = await fetchAdjacentBlockHashes({ network, timeoutMs: 15_000 });
         const seed = parseUserSeed(String(body.userSeed || 'overnight-demo'));
         const numWinners = Number(body.numWinners ?? 3);
-        const draw = ledger.draw(
-          chain.blockHashN,
-          chain.blockHashN1,
-          seed,
-          Number.isInteger(numWinners) && numWinners >= 0 ? numWinners : 3,
-        );
+        const safeWinners =
+          Number.isInteger(numWinners) && numWinners >= 0
+            ? Math.min(numWinners, MAX_WINNERS)
+            : 3;
+        const draw = ledger.draw(chain.blockHashN, chain.blockHashN1, seed, safeWinners);
         const winnerDetails = draw.winnerDetails.map(w => ({
           index: w.index.toString(),
           account: w.account,
@@ -520,18 +537,22 @@ const server = createServer(async (req, res) => {
       (req.method === 'GET' || req.method === 'POST') &&
       url.pathname === '/api/testnet/draw'
     ) {
+      if (!rateAllowed(req, 'legacy-draw', DRAW_COOLDOWN_MS)) {
+        json(res, 429, { ok: false, error: 'draw cooldown — wait a few seconds' });
+        return;
+      }
       try {
         const networkRaw = url.searchParams.get('network') || 'testnet';
         if (networkRaw !== 'testnet' && networkRaw !== 'signet') {
           throw new Error('network must be testnet or signet (mainnet refused)');
         }
         const sharesStr = url.searchParams.get('shares') || '1000';
-        if (!/^\d+$/.test(sharesStr) || BigInt(sharesStr) <= 0n) {
-          throw new Error('shares must be a positive integer');
+        if (!/^\d+$/.test(sharesStr) || BigInt(sharesStr) <= 0n || BigInt(sharesStr) > MAX_DRAW_SHARES) {
+          throw new Error(`shares must be a positive integer <= ${MAX_DRAW_SHARES}`);
         }
         const winners = Number(url.searchParams.get('winners') || '5');
-        if (!Number.isInteger(winners) || winners < 0) {
-          throw new Error('winners must be a non-negative integer');
+        if (!Number.isInteger(winners) || winners < 0 || winners > MAX_WINNERS) {
+          throw new Error(`winners must be an integer in [0, ${MAX_WINNERS}]`);
         }
         const seed = url.searchParams.get('seed') || 'satstogether-web-demo';
         const result = await runTestnetDraw({

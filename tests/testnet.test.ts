@@ -132,6 +132,29 @@ describe('testnet/draw-from-chain', () => {
     });
     assert.deepEqual(r.winners, r2.winners);
   });
+it('retries alternate explorer base when primary fails', async () => {
+    let calls = 0;
+    const fetchImpl = async (url: string) => {
+      calls++;
+      if (url.includes('mempool.space')) {
+        return { ok: false, status: 503, text: async () => 'down' };
+      }
+      if (url.endsWith('/blocks/tip/height')) {
+        return { ok: true, status: 200, text: async () => '10' };
+      }
+      if (url.endsWith('/block-height/9')) {
+        return { ok: true, status: 200, text: async () => 'aa'.repeat(32) };
+      }
+      if (url.endsWith('/block-height/10')) {
+        return { ok: true, status: 200, text: async () => 'bb'.repeat(32) };
+      }
+      return { ok: false, status: 404, text: async () => '' };
+    };
+    const r = await fetchAdjacentBlockHashes({ network: 'testnet', fetchImpl });
+    assert.ok(r.baseUrl.includes('blockstream.info'));
+    assert.equal(r.heightN1, 10);
+    assert.ok(calls > 1);
+  });
 });
 
 describe('live testnet (optional)', () => {
