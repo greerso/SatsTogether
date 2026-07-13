@@ -12,7 +12,17 @@ import { NetworkError } from '../testnet/block-hash.ts';
 import { fetchAdjacentBlockHashes, parseUserSeed } from '../testnet/block-hash.ts';
 import { runTestnetDraw, TESTNET_BANNER } from '../testnet/draw-from-chain.ts';
 import type { ChainNetwork } from '../testnet/block-hash.ts';
-import { getOrCreateLedger, resetLedger, snapshotJson } from './session-store.ts';
+import {
+  getOrCreateSession,
+  resetSession,
+  snapshotJson,
+  commitSeed,
+  clearSeedCommit,
+  assertSeedReveal,
+  ledgerFromSnapshotJson,
+  setSessionState,
+  type SnapshotJson,
+} from './session-store.ts';
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -91,7 +101,11 @@ async function readBody(req: IncomingMessage): Promise<string> {
 
 function sessionFrom(req: IncomingMessage) {
   const cookies = parseCookies(req);
-  return getOrCreateLedger(cookies[COOKIE]);
+  return getOrCreateSession(cookies[COOKIE]);
+}
+
+function snap(state: { ledger: import('./session-store.ts').SessionState['ledger']; seedCommit?: import('./session-store.ts').SeedCommit }) {
+  return snapshotJson(state.ledger, state.seedCommit);
 }
 
 function parseBigIntField(v: unknown, name: string): bigint {
@@ -136,6 +150,7 @@ const server = createServer(async (req, res) => {
           'Not audited',
           'Ephemeral in-memory sessions',
           'Offline draw model (placeholder_mix)',
+          'Claim credits are sim-only (not Lightning delivery)',
           'No real-funds / vaults / BitVM2 circuit',
         ],
         endpoints: [
@@ -148,6 +163,10 @@ const server = createServer(async (req, res) => {
           '/api/session/withdraw',
           '/api/session/draw',
           '/api/session/demo',
+          '/api/session/claim',
+          '/api/session/commit',
+          '/api/session/export',
+          '/api/session/import',
           '/api/testnet/draw',
         ],
       });
@@ -155,21 +174,23 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/session') {
-      const { id, ledger } = sessionFrom(req);
-      json(res, 200, { ok: true, sessionId: id, snapshot: snapshotJson(ledger) }, id);
+      const { id, state } = sessionFrom(req);
+      const ledger = state.ledger;
+      json(res, 200, { ok: true, sessionId: id, snapshot: snap(state) }, id);
       return;
     }
 
     if (req.method === 'POST' && url.pathname === '/api/session/reset') {
       const cookies = parseCookies(req);
-      const { id } = getOrCreateLedger(cookies[COOKIE]);
-      const ledger = resetLedger(id);
-      json(res, 200, { ok: true, sessionId: id, snapshot: snapshotJson(ledger) }, id);
+      const { id } = getOrCreateSession(cookies[COOKIE]);
+      const state = resetSession(id);
+      json(res, 200, { ok: true, sessionId: id, snapshot: snap(state) }, id);
       return;
     }
 
     if (req.method === 'POST' && url.pathname === '/api/session/deposit') {
-      const { id, ledger } = sessionFrom(req);
+      const { id, state } = sessionFrom(req);
+      const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
       const account = String(body.account || '').trim();
       const principalSats = parseBigIntField(body.principalSats, 'principalSats');
@@ -190,7 +211,7 @@ const server = createServer(async (req, res) => {
               shareCount: s.shareCount.toString(),
             })),
           },
-          snapshot: snapshotJson(ledger),
+          snapshot: snap(state),
         },
         id,
       );
@@ -198,16 +219,18 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/session/accrue') {
-      const { id, ledger } = sessionFrom(req);
+      const { id, state } = sessionFrom(req);
+      const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
       const amountSats = parseBigIntField(body.amountSats, 'amountSats');
       ledger.accrueYield(amountSats);
-      json(res, 200, { ok: true, sessionId: id, snapshot: snapshotJson(ledger) }, id);
+      json(res, 200, { ok: true, sessionId: id, snapshot: snap(state) }, id);
       return;
     }
 
     if (req.method === 'POST' && url.pathname === '/api/session/withdraw') {
-      const { id, ledger } = sessionFrom(req);
+      const { id, state } = sessionFrom(req);
+      const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
       const account = String(body.account || '').trim();
       const out = ledger.withdraw(account);
@@ -218,7 +241,7 @@ const server = createServer(async (req, res) => {
           ok: true,
           sessionId: id,
           principalSats: out.principalSats.toString(),
-          snapshot: snapshotJson(ledger),
+          snapshot: snap(state),
         },
         id,
       );
@@ -226,7 +249,8 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/session/draw') {
-      const { id, ledger } = sessionFrom(req);
+      const { id, state } = sessionFrom(req);
+      const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
       const networkRaw = String(body.network || 'testnet');
       if (networkRaw !== 'testnet' && networkRaw !== 'signet') {
@@ -241,9 +265,11 @@ const server = createServer(async (req, res) => {
       }
       const userSeed = String(body.userSeed || 'satstogether-web-demo');
       try {
+        assertSeedReveal(state, userSeed);
         const chain = await fetchAdjacentBlockHashes({ network, timeoutMs: 15_000 });
         const seed = parseUserSeed(userSeed);
         const draw = ledger.draw(chain.blockHashN, chain.blockHashN1, seed, numWinners);
+        clearSeedCommit(state);
         const winnerDetails = draw.winnerDetails.map(w => ({
           index: w.index.toString(),
           account: w.account,
@@ -271,7 +297,7 @@ const server = createServer(async (req, res) => {
               yieldAvailable: draw.yieldAvailable.toString(),
               allocated: draw.allocated.toString(),
             },
-            snapshot: snapshotJson(ledger),
+            snapshot: snap(state),
           },
           id,
         );
@@ -284,7 +310,7 @@ const server = createServer(async (req, res) => {
               ok: false,
               soft_fail: true,
               error: e.message,
-              snapshot: snapshotJson(ledger),
+              snapshot: snap(state),
             },
             id,
           );
@@ -292,6 +318,90 @@ const server = createServer(async (req, res) => {
         }
         throw e;
       }
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/session/claim') {
+      const { id, state } = sessionFrom(req);
+      const ledger = state.ledger;
+      const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+      const account = String(body.account || '').trim();
+      const out = ledger.claim(account);
+      json(
+        res,
+        200,
+        {
+          ok: true,
+          sessionId: id,
+          claimedSats: out.claimedSats.toString(),
+          note: 'Sim claim drain only — no Lightning/on-chain delivery',
+          snapshot: snap(state),
+        },
+        id,
+      );
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/session/commit') {
+      const { id, state } = sessionFrom(req);
+      const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+      const seed = String(body.seed || '');
+      const commit = commitSeed(state, seed);
+      json(
+        res,
+        200,
+        {
+          ok: true,
+          sessionId: id,
+          commit,
+          note: 'Draw must reveal the same seed string. Not production commit-reveal.',
+          snapshot: snap(state),
+        },
+        id,
+      );
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/session/export') {
+      const { id, state } = sessionFrom(req);
+      json(
+        res,
+        200,
+        {
+          ok: true,
+          sessionId: id,
+          exportedAt: new Date().toISOString(),
+          version: '0.1.0-prototype',
+          snapshot: snap(state),
+        },
+        id,
+      );
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/session/import') {
+      const { id } = sessionFrom(req);
+      const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
+      const raw = (body.snapshot || body) as SnapshotJson;
+      if (!raw || typeof raw !== 'object' || !('nextShareIndex' in raw)) {
+        json(res, 400, { ok: false, error: 'snapshot object required' }, id);
+        return;
+      }
+      const ledger = ledgerFromSnapshotJson(raw);
+      const seedCommit =
+        raw.seedCommit && typeof raw.seedCommit === 'object'
+          ? {
+              hashHex: String((raw.seedCommit as { hashHex?: string }).hashHex || ''),
+              at: Number((raw.seedCommit as { at?: number }).at) || Date.now(),
+            }
+          : undefined;
+      if (seedCommit && !seedCommit.hashHex) {
+        json(res, 400, { ok: false, error: 'invalid seedCommit' }, id);
+        return;
+      }
+      const state = { ledger, seedCommit: seedCommit?.hashHex ? seedCommit : undefined };
+      setSessionState(id, state);
+      json(res, 200, { ok: true, sessionId: id, snapshot: snap(state) }, id);
       return;
     }
 
@@ -305,8 +415,9 @@ const server = createServer(async (req, res) => {
         return;
       }
       const cookies = parseCookies(req);
-      const { id } = getOrCreateLedger(cookies[COOKIE]);
-      const ledger = resetLedger(id);
+      const { id } = getOrCreateSession(cookies[COOKIE]);
+      const state = resetSession(id);
+      const ledger = state.ledger;
       const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>;
       const networkRaw = String(body.network || 'testnet');
       if (networkRaw !== 'testnet' && networkRaw !== 'signet') {
@@ -364,7 +475,7 @@ const server = createServer(async (req, res) => {
               yieldAvailable: draw.yieldAvailable.toString(),
               allocated: draw.allocated.toString(),
             },
-            snapshot: snapshotJson(ledger),
+            snapshot: snap(state),
           },
           id,
         );
@@ -378,7 +489,7 @@ const server = createServer(async (req, res) => {
               soft_fail: true,
               error: e.message,
               note: 'Deposits + yield applied; draw soft-failed (explorer).',
-              snapshot: snapshotJson(ledger),
+              snapshot: snap(state),
             },
             id,
           );

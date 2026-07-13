@@ -259,18 +259,48 @@ describe('sim/ledger share accounting', () => {
     assert.equal(rec.byAccount.alice, rec.allocated);
   });
 
+  it('claim credits from draw and claim drains balance', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 1000n);
+    ledger.accrueYield(100n);
+    const [a, b, c] = sampleHashes();
+    const rec = ledger.draw(a, b, c, 1);
+    if (rec.winners.length) {
+      assert.equal(ledger.claimBalance('alice'), rec.byAccount.alice ?? 0n);
+      const out = ledger.claim('alice');
+      assert.equal(out.claimedSats, rec.byAccount.alice);
+      assert.equal(ledger.claimBalance('alice'), 0n);
+      assert.throws(() => ledger.claim('alice'), /no claim/);
+    } else {
+      assert.equal(ledger.claimBalance('alice'), 0n);
+    }
+  });
+
+  it('restore preserves ownership and claims', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 1000n);
+    ledger.deposit('bob', 1000n);
+    ledger.accrueYield(50n);
+    const [a, b, c] = sampleHashes();
+    ledger.draw(a, b, c, 2);
+    const snap = ledger.snapshot();
+    const restored = ShareLedger.restore(snap);
+    assert.equal(restored.ownerOf(0n), 'alice');
+    assert.equal(restored.ownerOf(1n), 'bob');
+    assert.equal(restored.claimBalance('alice'), ledger.claimBalance('alice'));
+    assert.equal(restored.claimBalance('bob'), ledger.claimBalance('bob'));
+  });
+
   it('winnerDetails stay frozen after withdraw', () => {
     const ledger = new ShareLedger();
     ledger.deposit('alice', 1000n);
     ledger.deposit('bob', 1000n);
     ledger.accrueYield(100n);
     const [a, b, c] = sampleHashes();
-    const rec = ledger.draw(a, b, c, 2);
+    ledger.draw(a, b, c, 2);
     ledger.withdraw('alice');
-    const snap = ledger.snapshot();
-    const frozen = snap.draws[0]!.winnerDetails;
+    const frozen = ledger.snapshot().draws[0]!.winnerDetails;
     assert.ok(frozen.some(w => w.account === 'alice' || w.account === 'bob'));
-    // Live ownerOf for alice indices is null after withdraw
     for (const w of frozen) {
       if (w.account === 'alice') assert.equal(ledger.ownerOf(w.index), null);
     }

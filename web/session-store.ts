@@ -1,15 +1,34 @@
 /**
- * In-memory multi-session ShareLedger store for the prototype web UI.
+ * In-memory multi-session store for the prototype web UI.
  * Ephemeral: restarts wipe state. Not custody. Not multi-instance durable.
  */
 
-import { randomUUID } from 'node:crypto';
-import { ShareLedger, type LedgerSnapshot } from '../sim/ledger.ts';
+import { createHash, randomUUID } from 'node:crypto';
+import {
+  ShareLedger,
+  DEFAULT_SATS_PER_SHARE,
+  type LedgerSnapshot,
+  type AccountId,
+} from '../sim/ledger.ts';
 
-const sessions = new Map<string, ShareLedger>();
+export interface SeedCommit {
+  hashHex: string;
+  at: number;
+}
+
+export interface SessionState {
+  ledger: ShareLedger;
+  seedCommit?: SeedCommit;
+}
+
+const sessions = new Map<string, SessionState>();
 const MAX_SESSIONS = 500;
 
-export function getOrCreateLedger(sessionId: string | undefined): { id: string; ledger: ShareLedger } {
+function emptySession(): SessionState {
+  return { ledger: new ShareLedger() };
+}
+
+export function getOrCreateSession(sessionId: string | undefined): { id: string; state: SessionState } {
   let id = sessionId && sessions.has(sessionId) ? sessionId : '';
   if (!id) {
     if (sessions.size >= MAX_SESSIONS) {
@@ -17,18 +36,57 @@ export function getOrCreateLedger(sessionId: string | undefined): { id: string; 
       if (first) sessions.delete(first);
     }
     id = randomUUID();
-    sessions.set(id, new ShareLedger());
+    sessions.set(id, emptySession());
   }
-  return { id, ledger: sessions.get(id)! };
+  return { id, state: sessions.get(id)! };
 }
 
+/** @deprecated use getOrCreateSession */
+export function getOrCreateLedger(sessionId: string | undefined) {
+  const { id, state } = getOrCreateSession(sessionId);
+  return { id, ledger: state.ledger };
+}
+
+export function resetSession(sessionId: string): SessionState {
+  const state = emptySession();
+  sessions.set(sessionId, state);
+  return state;
+}
+
+/** @deprecated use resetSession */
 export function resetLedger(sessionId: string): ShareLedger {
-  const ledger = new ShareLedger();
-  sessions.set(sessionId, ledger);
-  return ledger;
+  return resetSession(sessionId).ledger;
 }
 
-export function snapshotJson(ledger: ShareLedger) {
+export function setSessionState(sessionId: string, state: SessionState) {
+  sessions.set(sessionId, state);
+}
+
+export function sha256Hex(text: string): string {
+  return createHash('sha256').update(text, 'utf8').digest('hex');
+}
+
+export function commitSeed(state: SessionState, seed: string): SeedCommit {
+  if (!seed) throw new Error('seed required');
+  const commit: SeedCommit = { hashHex: sha256Hex(seed), at: Date.now() };
+  state.seedCommit = commit;
+  return commit;
+}
+
+export function clearSeedCommit(state: SessionState) {
+  delete state.seedCommit;
+}
+
+/** If a commit exists, seed must hash-match; otherwise free seed ok. */
+export function assertSeedReveal(state: SessionState, seed: string): void {
+  if (!state.seedCommit) return;
+  const h = sha256Hex(seed);
+  if (h !== state.seedCommit.hashHex) {
+    throw new Error('seed does not match commitment (commit-reveal)');
+  }
+}
+
+export function snapshotJson(ledger: ShareLedger, seedCommit?: SeedCommit) {
   const s: LedgerSnapshot = ledger.snapshot();
   return {
     satsPerShare: ledger.satsPerShare.toString(),
@@ -37,6 +95,12 @@ export function snapshotJson(ledger: ShareLedger) {
     yieldPoolSats: s.yieldPoolSats.toString(),
     nextShareIndex: s.nextShareIndex.toString(),
     epoch: s.epoch,
+    claimBalances: Object.fromEntries(
+      Object.entries(s.claimBalances).map(([k, v]) => [k, v.toString()]),
+    ),
+    seedCommit: seedCommit
+      ? { hashHex: seedCommit.hashHex, at: seedCommit.at }
+      : null,
     positions: s.positions.map(p => ({
       account: p.account,
       startIndex: p.startIndex.toString(),
@@ -50,7 +114,6 @@ export function snapshotJson(ledger: ShareLedger) {
     draws: s.draws.map(d => ({
       epoch: d.epoch,
       winners: d.winners.map(String),
-      // Frozen at draw time (survives withdraw)
       winnerDetails: d.winnerDetails.map(w => ({
         index: w.index.toString(),
         account: w.account,
@@ -63,4 +126,45 @@ export function snapshotJson(ledger: ShareLedger) {
       allocated: d.allocated.toString(),
     })),
   };
+}
+
+export type SnapshotJson = ReturnType<typeof snapshotJson>;
+
+export function ledgerFromSnapshotJson(data: SnapshotJson): ShareLedger {
+  const satsPerShare = BigInt(data.satsPerShare || String(DEFAULT_SATS_PER_SHARE));
+  const snap: LedgerSnapshot = {
+    totalShares: BigInt(data.totalShares),
+    totalPrincipalSats: BigInt(data.totalPrincipalSats),
+    yieldPoolSats: BigInt(data.yieldPoolSats),
+    nextShareIndex: BigInt(data.nextShareIndex),
+    epoch: Number(data.epoch) || 0,
+    positions: (data.positions || []).map(p => ({
+      account: p.account as AccountId,
+      startIndex: BigInt(p.startIndex),
+      shareCount: BigInt(p.shareCount),
+      principalSats: BigInt(p.principalSats),
+      segments: (p.segments || []).map(seg => ({
+        startIndex: BigInt(seg.startIndex),
+        shareCount: BigInt(seg.shareCount),
+      })),
+    })),
+    draws: (data.draws || []).map(d => ({
+      epoch: d.epoch,
+      winners: d.winners.map((w: string) => BigInt(w)),
+      winnerDetails: (d.winnerDetails || []).map(w => ({
+        index: BigInt(w.index),
+        account: w.account as AccountId,
+      })),
+      byAccount: Object.fromEntries(
+        Object.entries(d.byAccount || {}).map(([k, v]) => [k, BigInt(v as string)]),
+      ),
+      prizePerWinner: BigInt(d.prizePerWinner),
+      yieldAvailable: BigInt(d.yieldAvailable),
+      allocated: BigInt(d.allocated),
+    })),
+    claimBalances: Object.fromEntries(
+      Object.entries(data.claimBalances || {}).map(([k, v]) => [k, BigInt(v as string)]),
+    ),
+  };
+  return ShareLedger.restore(snap, satsPerShare);
 }

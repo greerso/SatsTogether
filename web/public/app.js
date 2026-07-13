@@ -181,6 +181,33 @@ function render(snap) {
     empty.textContent = '·';
     av.appendChild(empty);
   }
+
+  // Claim balances
+  const claims = snap.claimBalances || {};
+  const claimEntries = Object.entries(claims).filter(([, v]) => Number(v) > 0);
+  const claimsEl = $('claims');
+  if (claimsEl) {
+    claimsEl.innerHTML = claimEntries.length
+      ? '<table><tr><th>account</th><th>claimable (sim)</th></tr>' +
+        claimEntries
+          .map(([k, v]) => '<tr><td>' + k + '</td><td class="win">' + fmt(v) + ' sats</td></tr>')
+          .join('') +
+        '</table>'
+      : 'No claim credits';
+  }
+
+  // Seed commit status
+  const cs = $('commit-status');
+  if (cs) {
+    if (snap.seedCommit && snap.seedCommit.hashHex) {
+      cs.textContent =
+        'Committed sha256=' +
+        snap.seedCommit.hashHex.slice(0, 16) +
+        '… · draw must reveal same seed';
+    } else {
+      cs.textContent = 'No commitment — free seed allowed at draw';
+    }
+  }
 }
 
 function showDrawResult(body) {
@@ -377,6 +404,74 @@ $('btn-draw').onclick = () =>
       log(String(e), false);
     }
   });
+
+$('btn-claim').onclick = () =>
+  withBusy($('btn-claim'), async () => {
+    try {
+      const body = await api('/api/session/claim', {
+        method: 'POST',
+        body: JSON.stringify({ account: $('claim-account').value }),
+      });
+      render(body.snapshot);
+      log('Claimed ' + fmt(body.claimedSats) + ' sats (sim only)', true);
+    } catch (e) {
+      log(String(e), false);
+    }
+  });
+
+$('btn-commit').onclick = () =>
+  withBusy($('btn-commit'), async () => {
+    try {
+      const body = await api('/api/session/commit', {
+        method: 'POST',
+        body: JSON.stringify({ seed: $('seed').value }),
+      });
+      render(body.snapshot);
+      log('Seed committed ' + body.commit.hashHex.slice(0, 20) + '…', true);
+    } catch (e) {
+      log(String(e), false);
+    }
+  });
+
+$('btn-export').onclick = () =>
+  withBusy($('btn-export'), async () => {
+    try {
+      const body = await api('/api/session/export');
+      const text = JSON.stringify(body, null, 2);
+      const out = $('export-out');
+      out.hidden = false;
+      out.textContent = text;
+      const blob = new Blob([text], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'satstogether-session.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      log('Exported session JSON', true);
+    } catch (e) {
+      log(String(e), false);
+    }
+  });
+
+$('import-file').addEventListener('change', async (ev) => {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const snapshot = parsed.snapshot || parsed;
+    const body = await api('/api/session/import', {
+      method: 'POST',
+      body: JSON.stringify({ snapshot }),
+    });
+    render(body.snapshot);
+    log('Imported session snapshot', true);
+  } catch (e) {
+    log(String(e), false);
+  } finally {
+    ev.target.value = '';
+  }
+});
 
 updateSharePreview();
 refresh().catch((e) => log(String(e), false));
