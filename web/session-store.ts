@@ -50,10 +50,14 @@ export function snapshotJson(ledger: ShareLedger) {
     draws: s.draws.map(d => ({
       epoch: d.epoch,
       winners: d.winners.map(String),
-      winnerDetails: ledger.winnersDetail(d.winners).map(w => ({
+      // Frozen at draw time (survives withdraw)
+      winnerDetails: d.winnerDetails.map(w => ({
         index: w.index.toString(),
         account: w.account,
       })),
+      byAccount: Object.fromEntries(
+        Object.entries(d.byAccount).map(([k, v]) => [k, v.toString()]),
+      ),
       prizePerWinner: d.prizePerWinner.toString(),
       yieldAvailable: d.yieldAvailable.toString(),
       allocated: d.allocated.toString(),

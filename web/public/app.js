@@ -109,9 +109,9 @@ function render(snap) {
       '</table>'
     : 'No positions yet — deposit to mint SatsShares.';
 
-  // Draws table (include owners when present)
+  // Draws table (include owners + byAccount)
   $('draws').innerHTML = draws.length
-    ? '<table><tr><th>epoch</th><th>winners</th><th>allocated</th></tr>' +
+    ? '<table><tr><th>epoch</th><th>winners</th><th>by account</th><th>allocated</th></tr>' +
       draws
         .slice()
         .reverse()
@@ -122,11 +122,18 @@ function render(snap) {
             : d.winners.length
               ? d.winners.join(', ')
               : '—';
+          const by = d.byAccount
+            ? Object.entries(d.byAccount)
+                .map(([k, v]) => k + ':' + fmt(v))
+                .join(' · ')
+            : '—';
           return (
             '<tr><td>' +
             d.epoch +
             '</td><td class="mono">' +
             winLabel +
+            '</td><td class="mono">' +
+            by +
             '</td><td class="win">' +
             fmt(d.allocated) +
             ' sats</td></tr>'

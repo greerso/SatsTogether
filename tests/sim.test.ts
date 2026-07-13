@@ -229,18 +229,51 @@ describe('sim/ledger share accounting', () => {
     assert.equal(ledger.ownerOf(1n), 'bob');
   });
 
-  it('winnersDetail annotates owners', () => {
+  it('byAccount aggregates prizePerWinner per owner', () => {
     const ledger = new ShareLedger();
     ledger.deposit('alice', 1000n);
     ledger.deposit('bob', 1000n);
-    const detail = ledger.winnersDetail([0n, 1n]);
-    assert.deepEqual(
-      detail.map(d => ({ i: d.index, a: d.account })),
-      [
-        { i: 0n, a: 'alice' },
-        { i: 1n, a: 'bob' },
-      ],
-    );
+    ledger.accrueYield(100n);
+    const [a, b, c] = sampleHashes();
+    const rec = ledger.draw(a, b, c, 2);
+    let sum = 0n;
+    for (const v of Object.values(rec.byAccount)) sum += v;
+    assert.equal(sum, rec.allocated);
+    for (const [acct, amt] of Object.entries(rec.byAccount)) {
+      assert.ok(amt > 0n);
+      assert.ok(acct === 'alice' || acct === 'bob');
+    }
+  });
+
+  it('byAccount accumulates when one account wins multiple indices', () => {
+    // Single owner holds both shares → both winning indices credit the same
+    // account. Exercises the += accumulation (a `=` would only keep the last).
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 2000n);
+    ledger.accrueYield(100n);
+    const [a, b, c] = sampleHashes();
+    const rec = ledger.draw(a, b, c, 2);
+    assert.equal(rec.winners.length, 2);
+    assert.equal(Object.keys(rec.byAccount).length, 1);
+    assert.equal(rec.byAccount.alice, rec.prizePerWinner * 2n);
+    assert.equal(rec.byAccount.alice, rec.allocated);
+  });
+
+  it('winnerDetails stay frozen after withdraw', () => {
+    const ledger = new ShareLedger();
+    ledger.deposit('alice', 1000n);
+    ledger.deposit('bob', 1000n);
+    ledger.accrueYield(100n);
+    const [a, b, c] = sampleHashes();
+    const rec = ledger.draw(a, b, c, 2);
+    ledger.withdraw('alice');
+    const snap = ledger.snapshot();
+    const frozen = snap.draws[0]!.winnerDetails;
+    assert.ok(frozen.some(w => w.account === 'alice' || w.account === 'bob'));
+    // Live ownerOf for alice indices is null after withdraw
+    for (const w of frozen) {
+      if (w.account === 'alice') assert.equal(ledger.ownerOf(w.index), null);
+    }
   });
 });
 
